@@ -1,27 +1,31 @@
-﻿// 路径：src/Edge/IIoT.Edge.Shell/ViewModels/MainWindowViewModel.cs
+﻿using System.Collections.ObjectModel;
+using IIoT.Edge.UI.Shared.WpfBase;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.UI.Shared.WpfBase; // 引用你老项目优秀的基类
-using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace IIoT.Edge.Shell.ViewModels
 {
-    // 必须是 public
     public class MainWindowViewModel : BaseNotifyPropertyChanged
     {
-        private object _currentView;
+        public ObservableCollection<MenuInfo> Menus { get; } = new();
+        public ObservableCollection<object> Documents { get; } = new();
+        public ObservableCollection<object> Anchorables { get; } = new();
 
-        // 绑定到主界面中心区域的当前页面
-        public object CurrentView
+        // 补回这个属性，修复 MainWindow.xaml 或 NavigationService 的报错
+        private object? _currentView;
+
+        public object? CurrentView
         {
             get => _currentView;
-            set
-            {
-                _currentView = value;
-                OnPropertyChanged(); // 触发老项目基类里的通知方法
-            }
+            set { _currentView = value; OnPropertyChanged(); }
         }
 
-        // 绑定到左侧菜单的数据源
-        public ObservableCollection<MenuInfo> Menus { get; set; } = new ObservableCollection<MenuInfo>();
+        private MenuInfo? _selectedMenu;
+
+        public MenuInfo? SelectedMenu
+        {
+            get => _selectedMenu;
+            set { _selectedMenu = value; OnPropertyChanged(); }
+        }
     }
 }

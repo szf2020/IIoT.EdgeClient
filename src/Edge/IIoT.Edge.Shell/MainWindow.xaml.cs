@@ -1,30 +1,22 @@
-﻿// 路径：src/Edge/IIoT.Edge.Shell/MainWindow.xaml.cs
+﻿using System.Windows;
+using System.Windows.Input;
 using IIoT.Edge.Shell.ViewModels;
-using IIoT.Edge.UI.Shared.Modularity;
-using System.Windows;
-using System.Windows.Controls;
 
 namespace IIoT.Edge.Shell
 {
-    // 必须是 public
     public partial class MainWindow : Window
     {
-        private readonly INavigationService _navigationService;
-
-        // 通过 DI 容器自动注入 ViewModel 和 导航服务
-        public MainWindow(MainWindowViewModel viewModel, INavigationService navigationService)
+        public MainWindow(MainWindowViewModel viewModel)
         {
             InitializeComponent();
-            DataContext = viewModel;
-            _navigationService = navigationService;
+            this.DataContext = viewModel;
         }
 
-        private void MenuListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (MenuListBox.SelectedItem is MenuInfo menu)
+            if (e.LeftButton == MouseButtonState.Pressed)
             {
-                // 触发页面切换
-                _navigationService.NavigateTo(menu.RouteName);
+                this.DragMove();
             }
         }
     }
