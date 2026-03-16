@@ -1,14 +1,15 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows.Controls;
 
-namespace IIoT.Edge.UI.Shared.WpfBase
+namespace IIoT.Edge.SharedKernel.WpfBase
 {
     /// <summary>
     /// 属性变更通知类
     /// </summary>
-    public class BaseNotifyPropertyChanged : INotifyPropertyChanged
+    public class BaseControlNotifyPropertyChanged : Control, INotifyPropertyChanged
     {
-        public event PropertyChangedEventHandler? PropertyChanged;
+        public event PropertyChangedEventHandler PropertyChanged;
 
         public void OnPropertyChanged([CallerMemberName] string propertyName = "")
         {

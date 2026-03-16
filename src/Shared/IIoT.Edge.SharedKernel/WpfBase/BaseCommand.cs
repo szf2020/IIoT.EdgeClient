@@ -1,6 +1,6 @@
 ﻿using System.Windows.Input;
 
-namespace IIoT.Edge.UI.Shared.WpfBase
+namespace IIoT.Edge.SharedKernel.WpfBase
 {
     /// <summary>
     /// 基础命令类

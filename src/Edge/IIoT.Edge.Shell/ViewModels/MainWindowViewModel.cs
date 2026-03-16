@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
-using IIoT.Edge.UI.Shared.WpfBase;
 using IIoT.Edge.UI.Shared.Modularity;
 using System.Windows;
+using IIoT.Edge.SharedKernel.WpfBase;
 
 namespace IIoT.Edge.Shell.ViewModels
 {
