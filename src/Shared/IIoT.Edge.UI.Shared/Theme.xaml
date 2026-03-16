@@ -1,0 +1,10 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="MainStyle/MainWindowStyle.xaml" />
+        <ResourceDictionary Source="Interface/InterfaceStyle.xaml" />
+        <ResourceDictionary Source="Converter/Converter.xaml" />
+        <ResourceDictionary Source="dialogueWin/dialogueWinStyle.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <FontFamily x:Key="IconFont">pack://application:,,,/IIoT.Edge.UI.Shared;component/Assets/fonts/#iconfont</FontFamily>
+</ResourceDictionary>
