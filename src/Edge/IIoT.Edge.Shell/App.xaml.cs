@@ -1,48 +1,74 @@
-﻿// 路径：src/Edge/IIoT.Edge.Shell/App.xaml.cs
-using System;
-using System.Windows;
-using Microsoft.Extensions.DependencyInjection;
-using IIoT.Edge.UI.Shared.Modularity;
+// 路径：src/Edge/IIoT.Edge.Shell/App.xaml.cs
+using IIoT.Edge.CloudSync.Auth;
+using IIoT.Edge.CloudSync.Config;
+using IIoT.Edge.Contracts;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.Shell.ViewModels;
+using IIoT.Edge.UI.Shared.Modularity;
+using IIoT.Edge.UI.Shared.Widgets.Login;
+using IIoT.Edge.UI.Shared.Widgets.SysMenu;
+using IIoT.Edge.UI.Shared.Widgets.SystemHeader;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System;
+using System.IO;
+using System.Windows;
 
 namespace IIoT.Edge.Shell
 {
     public partial class App : Application
     {
-        public IServiceProvider ServiceProvider { get; private set; }
+        public IServiceProvider ServiceProvider { get; private set; } = null!;
 
         public App()
         {
             _ = typeof(MaterialDesignThemes.Wpf.BundledTheme).Assembly;
-            _ = typeof(AvalonDock.Themes.MetroTheme).Assembly;
         }
 
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
+            var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .Build();
+
             var services = new ServiceCollection();
             var viewRegistry = new ViewRegistry();
-
-            // 1. 将加载器接口注册进容器（如果需要后期动态加载）
-            // 但在启动阶段，我们先直接创建实例完成初始化
+            // 1. 模块扫描
             IModuleLoader loader = new ModuleLoader(services, viewRegistry);
-
-            // 2. 执行扫描
             loader.LoadFromDirectory(AppDomain.CurrentDomain.BaseDirectory);
 
-            // 3. 注册 Shell 自身服务
+            // 2. Shell 核心服务
             services.AddSingleton<IViewRegistry>(viewRegistry);
+            services.AddSingleton<INavigationService, NavigationService>();
+
+            // 本地管理员配置
+            var localAdminConfig = new LocalAdminConfig();
+            configuration.GetSection("LocalAdmin").Bind(localAdminConfig);
+            services.AddSingleton(localAdminConfig);
+
+            // HttpClient + AuthService（CloudSync 实现）
+            var baseUrl = configuration["CloudApi:BaseUrl"] ?? "http://10.98.90.154:81";
+            services.AddHttpClient<AuthService>(client =>
+            {
+                client.BaseAddress = new Uri(baseUrl);
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+            services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
+
+            // 5. 系统级 Widget
+            services.AddSingleton<HeaderWidget>();
+            services.AddSingleton<SysMenuWidget>();
+            services.AddSingleton<LoginWidget>();
+            // 6. 主窗体
             services.AddSingleton<MainWindowViewModel>();
             services.AddSingleton<MainWindow>();
 
-            // 4. 构建 DI
+            // 7. 构建容器并启动
             ServiceProvider = services.BuildServiceProvider();
-
-            // 5. 显示主窗体
-            var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+            ServiceProvider.GetRequiredService<MainWindow>().Show();
         }
     }
 }

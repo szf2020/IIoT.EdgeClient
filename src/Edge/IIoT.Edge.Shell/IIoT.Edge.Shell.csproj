@@ -9,14 +9,26 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Dirkster.AvalonDock" Version="4.72.1" />
+    <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="4.72.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.CloudSync\IIoT.Edge.CloudSync.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure\IIoT.Edge.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.PlcDevice\IIoT.Edge.PlcDevice.csproj" />
+    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Config\IIoT.Edge.Module.Config.csproj" />
+    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Formula\IIoT.Edge.Module.Formula.csproj" />
+    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Hardware\IIoT.Edge.Module.Hardware.csproj" />
+    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Production\IIoT.Edge.Module.Production.csproj" />
+    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.SysLog\IIoT.Edge.Module.SysLog.csproj" />
     <ProjectReference Include="..\..\Shared\IIoT.Edge.UI.Shared\IIoT.Edge.UI.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

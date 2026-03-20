@@ -8,7 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\IIoT.Edge.UseCases\IIoT.Edge.UseCases.csproj" />
+    <PackageReference Include="log4net" Version="3.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\IIoT.Edge.UI.Shared\IIoT.Edge.UI.Shared.csproj" />
   </ItemGroup>
 
 </Project>

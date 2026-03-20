@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.UI.Shared.PluginSystem
+﻿namespace IIoT.Edge.Contracts.Plugin
 {
     /// <summary>
     /// 边缘端 UI 插件通用契约

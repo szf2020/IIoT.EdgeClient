@@ -8,17 +8,19 @@
     <Project Path="src/Edge/IIoT.Edge.Shell/IIoT.Edge.Shell.csproj" Id="18446b65-38e5-4acb-a229-ba0f9d8a83cf" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
-    <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="d4251049-64a3-478a-9044-3953f741985b" />
+    <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
     <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure/IIoT.Edge.Infrastructure.csproj" Id="3fbdae2b-de52-43d5-ac49-4271b8819af2" />
     <Project Path="src/Infrastructure/IIoT.Edge.PlcDevice/IIoT.Edge.PlcDevice.csproj" Id="78ef5b00-1ea0-475d-9e2f-8318f8ea0819" />
   </Folder>
   <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/IIoT.Edge.Module.Config/IIoT.Edge.Module.Config.csproj" Id="55b910b1-cad6-442d-9b10-9033e19c7748" />
     <Project Path="src/Modules/IIoT.Edge.Module.Formula/IIoT.Edge.Module.Formula.csproj" Id="b6e48e8b-fa3d-4916-afe1-8f88215099b7" />
     <Project Path="src/Modules/IIoT.Edge.Module.Hardware/IIoT.Edge.Module.Hardware.csproj" Id="7c1ae4b7-1c61-45db-9489-1a183c5ad6da" />
     <Project Path="src/Modules/IIoT.Edge.Module.Production/IIoT.Edge.Module.Production.csproj" Id="1e6a51d1-2799-4e5f-854a-5e741351b276" />
-    <Project Path="src/Modules/IIoT.Edge.Module.SysAdmin/IIoT.Edge.Module.SysAdmin.csproj" Id="11d1f158-3a26-4505-a8da-1b1da35c7d2a" />
+    <Project Path="src/Modules/IIoT.Edge.Module.SysLog/IIoT.Edge.Module.SysLog.csproj" Id="b2b8d324-a68a-44d1-92fa-f4400617444b" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/IIoT.Edge.Contracts/IIoT.Edge.Contracts.csproj" Id="000cbd33-c27e-41cc-8f60-e5bc79c7296f" />
     <Project Path="src/Shared/IIoT.Edge.SharedKernel/IIoT.Edge.Common.csproj" />
     <Project Path="src/Shared/IIoT.Edge.UI.Shared/IIoT.Edge.UI.Shared.csproj" Id="2c8e15da-52ba-4d59-aced-196d42918475" />
   </Folder>

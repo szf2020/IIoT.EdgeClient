@@ -1,5 +1,5 @@
 ﻿// 路径：src/Shared/IIoT.Edge.UI.Shared/Modularity/AnchorableInfo.cs
-namespace IIoT.Edge.UI.Shared.Modularity
+namespace IIoT.Edge.Contracts.Model
 {
     public enum AnchorablePosition { Left, Right, Bottom, Main }
 

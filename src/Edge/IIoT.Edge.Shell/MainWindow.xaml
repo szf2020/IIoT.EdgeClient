@@ -1,35 +1,149 @@
-﻿<Window x:Class="IIoT.Edge.Shell.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:headerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SystemHeader;assembly=IIoT.Edge.UI.Shared"
-        Title="IIoT Edge Client" Height="768" Width="1024"
-        WindowStyle="None" AllowsTransparency="True" WindowStartupLocation="CenterScreen"
-        Background="#121212" Foreground="#EAEAEA">
+<Window
+    x:Class="IIoT.Edge.Shell.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:avalon="https://github.com/Dirkster99/AvalonDock"
+    xmlns:headerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SystemHeader;assembly=IIoT.Edge.UI.Shared"
+    xmlns:loginVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.Login;assembly=IIoT.Edge.UI.Shared"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:shared="clr-namespace:IIoT.Edge.UI.Shared.Widgets;assembly=IIoT.Edge.UI.Shared"
+    xmlns:sysMenuVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SysMenu;assembly=IIoT.Edge.UI.Shared"
+    Title="IIoT Edge Client"
+    Width="1280"
+    Height="768"
+    MinWidth="900"
+    MinHeight="600"
+    AllowsTransparency="True"
+    Background="#121212"
+    Foreground="#EAEAEA"
+    WindowStartupLocation="CenterScreen"
+    WindowStyle="None">
 
     <Window.Resources>
-        <DataTemplate DataType="{x:Type headerVM:HeaderWidget}">
-            <headerVM:HeaderView />
-        </DataTemplate>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/IIoT.Edge.UI.Shared;component/Theme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="45" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+    <Border
+        materialDesign:ElevationAssist.Elevation="Dp8"
+        Background="#121212"
+        CornerRadius="8">
 
-        <Border Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Background="#18181B" BorderBrush="#27272A" BorderThickness="0,0,1,0">
-            <TextBlock Text="SysMenu预留位" Foreground="#555" HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
+        <materialDesign:DialogHost
+            CloseOnClickAway="True"
+            DialogTheme="Dark"
+            Identifier="RootDialog">
+            <materialDesign:DialogHost.DialogContent>
+                <loginVM:LoginView DataContext="{Binding LoginViewModel}" />
+            </materialDesign:DialogHost.DialogContent>
 
-        <ContentControl Grid.Row="0" Grid.Column="1" Content="{Binding HeaderViewModel}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="220" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="45" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
 
-        <Border Grid.Row="1" Grid.Column="1" Background="#1E1E1E" Margin="2" CornerRadius="4">
-            <TextBlock Text="主工作区" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#555555" FontSize="20" />
-        </Border>
-    </Grid>
+                <!--  ① 左侧导航栏  -->
+                <Border
+                    Grid.Row="0"
+                    Grid.RowSpan="2"
+                    Grid.Column="0"
+                    Background="#18181B"
+                    BorderBrush="#27272A"
+                    BorderThickness="0,0,1,0"
+                    CornerRadius="8,0,0,8">
+                    <sysMenuVM:SysMenuView DataContext="{Binding SysMenuViewModel}" />
+                </Border>
+
+                <!--  ② 头部  -->
+                <ContentControl
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Content="{Binding HeaderViewModel}">
+                    <ContentControl.ContentTemplate>
+                        <DataTemplate>
+                            <headerVM:HeaderView />
+                        </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                </ContentControl>
+
+                <!--  ③ 主工作区：AvalonDock  -->
+                <avalon:DockingManager
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Background="#121212"
+                    BorderThickness="0">
+                    <avalon:LayoutRoot>
+                        <avalon:LayoutPanel Orientation="Horizontal">
+
+                            <!--  左侧主内容区（菜单导航切换）  -->
+                            <avalon:LayoutDocumentPane>
+                                <avalon:LayoutDocument
+                                    Title="主工作区"
+                                    CanClose="False"
+                                    CanFloat="False">
+                                    <Border Margin="-2" Background="#1E1E1E">
+                                        <ContentControl Content="{Binding CurrentView}">
+                                            <ContentControl.ContentTemplate>
+                                                <DataTemplate>
+                                                    <shared:PlaceholderView />
+                                                </DataTemplate>
+                                            </ContentControl.ContentTemplate>
+                                        </ContentControl>
+                                    </Border>
+                                </avalon:LayoutDocument>
+                            </avalon:LayoutDocumentPane>
+
+                            <!--  右侧常驻面板区  -->
+                            <avalon:LayoutAnchorablePaneGroup DockWidth="320" Orientation="Vertical">
+                                <!--  设备信息面板  -->
+                                <avalon:LayoutAnchorablePane>
+                                    <avalon:LayoutAnchorable
+                                        Title="设备信息"
+                                        CanAutoHide="False"
+                                        CanClose="False"
+                                        CanFloat="False"
+                                        CanHide="False">
+                                        <Border Padding="8" Background="#1E1E1E">
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Foreground="#555555"
+                                                Text="设备信息（预留）" />
+                                        </Border>
+                                    </avalon:LayoutAnchorable>
+                                </avalon:LayoutAnchorablePane>
+
+                                <!--  日志面板  -->
+                                <avalon:LayoutAnchorablePane>
+                                    <avalon:LayoutAnchorable
+                                        Title="系统日志"
+                                        CanAutoHide="False"
+                                        CanClose="False"
+                                        CanFloat="False"
+                                        CanHide="False">
+                                        <Border Padding="8" Background="#1E1E1E">
+                                            <TextBlock
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Foreground="#555555"
+                                                Text="系统日志（预留）" />
+                                        </Border>
+                                    </avalon:LayoutAnchorable>
+                                </avalon:LayoutAnchorablePane>
+                            </avalon:LayoutAnchorablePaneGroup>
+
+                        </avalon:LayoutPanel>
+                    </avalon:LayoutRoot>
+                </avalon:DockingManager>
+            </Grid>
+        </materialDesign:DialogHost>
+    </Border>
 </Window>

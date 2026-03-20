@@ -1,4 +1,5 @@
-﻿using System.Windows.Controls;
+using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace IIoT.Edge.UI.Shared.Widgets.SystemHeader
 {
@@ -7,11 +8,20 @@ namespace IIoT.Edge.UI.Shared.Widgets.SystemHeader
         public HeaderView()
         {
             InitializeComponent();
+            // ❌ 绝对不要 this.DataContext = new HeaderWidget()
+            // ✅ DataContext 由 MainWindow 的 DataTemplate 自动注入
+        }
 
-            // 【极其重要】：为了让你在独立测试这个 UserControl 时按钮能点，
-            // 必须临时把 DataContext 指向你的 ViewModel。
-            // (等之后接入主程序 ItemsControl 动态生成时，可以把这行删掉，由主程序自动注入)
-            this.DataContext = new HeaderWidget();
+        /// <summary>
+        /// 鼠标拖拽：View 层合法的 UI 调度，转发给 ViewModel Command
+        /// </summary>
+        private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (DataContext is HeaderWidget vm)
+            {
+                if (vm.WindowDragCommand.CanExecute(null))
+                    vm.WindowDragCommand.Execute(null);
+            }
         }
     }
 }

@@ -1,31 +1,37 @@
-﻿using System.Collections.ObjectModel;
-using IIoT.Edge.UI.Shared.Modularity;
-using System.Windows;
+// 路径：src/Edge/IIoT.Edge.Shell/ViewModels/MainWindowViewModel.cs
 using IIoT.Edge.Common.Mvvm;
+using IIoT.Edge.UI.Shared.Modularity;
+using IIoT.Edge.UI.Shared.Widgets.Login;
+using IIoT.Edge.UI.Shared.Widgets.SysMenu;
+using IIoT.Edge.UI.Shared.Widgets.SystemHeader;
 
 namespace IIoT.Edge.Shell.ViewModels
 {
     public class MainWindowViewModel : BaseNotifyPropertyChanged
     {
-        public ObservableCollection<MenuInfo> Menus { get; } = new();
-        public ObservableCollection<object> Documents { get; } = new();
-        public ObservableCollection<object> Anchorables { get; } = new();
+        public HeaderWidget HeaderViewModel { get; }
+        public SysMenuWidget SysMenuViewModel { get; }
+        public LoginWidget LoginViewModel { get; }
 
-        // 补回这个属性，修复 MainWindow.xaml 或 NavigationService 的报错
         private object? _currentView;
-
         public object? CurrentView
         {
             get => _currentView;
             set { _currentView = value; OnPropertyChanged(); }
         }
 
-        private MenuInfo? _selectedMenu;
-
-        public MenuInfo? SelectedMenu
+        public MainWindowViewModel(
+            HeaderWidget headerWidget,
+            SysMenuWidget sysMenuWidget,
+            LoginWidget loginWidget,
+            INavigationService navigationService)
         {
-            get => _selectedMenu;
-            set { _selectedMenu = value; OnPropertyChanged(); }
+            HeaderViewModel = headerWidget;
+            SysMenuViewModel = sysMenuWidget;
+            LoginViewModel = loginWidget;
+
+            // 监听导航事件，更新主工作区
+            navigationService.Navigated += widget => CurrentView = widget;
         }
     }
 }

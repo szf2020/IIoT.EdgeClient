@@ -15,6 +15,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\IIoT.Edge.Contracts\IIoT.Edge.Contracts.csproj" />
     <ProjectReference Include="..\IIoT.Edge.SharedKernel\IIoT.Edge.Common.csproj" />
   </ItemGroup>
 

@@ -1,4 +1,5 @@
-﻿using IIoT.Edge.UI.Shared.Mvvm;
+﻿using IIoT.Edge.Contracts.Plugin;
+using IIoT.Edge.UI.Shared.Mvvm;
 
 namespace IIoT.Edge.UI.Shared.PluginSystem
 {
