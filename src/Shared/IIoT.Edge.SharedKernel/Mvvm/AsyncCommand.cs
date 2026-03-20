@@ -1,6 +1,6 @@
 ﻿using System.Windows.Input;
 
-namespace IIoT.Edge.SharedKernel.WpfBase
+namespace IIoT.Edge.Common.Mvvm
 {
     public class AsyncCommand<T> : ICommand
     {

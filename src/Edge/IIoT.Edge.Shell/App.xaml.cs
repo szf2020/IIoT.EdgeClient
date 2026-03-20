@@ -14,8 +14,6 @@ namespace IIoT.Edge.Shell
 
         public App()
         {
-            // 必须在 XAML 解析前强行引用底座程序集
-            _ = typeof(IIoT.Edge.UI.Shared.Layouts.HeaderView).Assembly;
             _ = typeof(MaterialDesignThemes.Wpf.BundledTheme).Assembly;
             _ = typeof(AvalonDock.Themes.MetroTheme).Assembly;
         }

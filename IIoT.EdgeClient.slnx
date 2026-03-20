@@ -19,7 +19,7 @@
     <Project Path="src/Modules/IIoT.Edge.Module.SysAdmin/IIoT.Edge.Module.SysAdmin.csproj" Id="11d1f158-3a26-4505-a8da-1b1da35c7d2a" />
   </Folder>
   <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/IIoT.Edge.SharedKernel/IIoT.Edge.SharedKernel.csproj" />
+    <Project Path="src/Shared/IIoT.Edge.SharedKernel/IIoT.Edge.Common.csproj" />
     <Project Path="src/Shared/IIoT.Edge.UI.Shared/IIoT.Edge.UI.Shared.csproj" Id="2c8e15da-52ba-4d59-aced-196d42918475" />
   </Folder>
 </Solution>

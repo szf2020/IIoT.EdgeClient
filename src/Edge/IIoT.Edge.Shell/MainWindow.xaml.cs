@@ -1,23 +1,22 @@
-﻿using System.Windows;
-using System.Windows.Input;
-using IIoT.Edge.Shell.ViewModels;
+﻿using IIoT.Edge.UI.Shared.Widgets.SystemHeader;
+using System.Windows;
 
 namespace IIoT.Edge.Shell
 {
     public partial class MainWindow : Window
     {
-        public MainWindow(MainWindowViewModel viewModel)
+        // 对外暴露头部的 ViewModel
+        public HeaderWidget HeaderViewModel { get; set; }
+
+        public MainWindow()
         {
             InitializeComponent();
-            this.DataContext = viewModel;
-        }
 
-        private void Border_MouseDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.LeftButton == MouseButtonState.Pressed)
-            {
-                this.DragMove();
-            }
+            // 实例化 ViewModel
+            HeaderViewModel = new HeaderWidget();
+
+            // 绑定当前窗口的数据上下文
+            this.DataContext = this;
         }
     }
 }

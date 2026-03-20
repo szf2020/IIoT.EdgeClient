@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Windows.Controls;
 
-namespace IIoT.Edge.SharedKernel.WpfBase
+namespace IIoT.Edge.UI.Shared.Mvvm
 {
     /// <summary>
     /// 属性变更通知类
