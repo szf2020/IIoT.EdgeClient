@@ -1,4 +1,4 @@
-﻿// 路径：src/Modules/IIoT.Edge.Module.Hardware/HardwareModule.cs
+﻿using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Model;
 using IIoT.Edge.Module.Hardware.HardwareConfigView;
 using IIoT.Edge.Module.Hardware.IOView;
@@ -20,15 +20,27 @@ namespace IIoT.Edge.Module.Hardware
 
         public void ConfigureViews(IViewRegistry registry)
         {
-            registry.RegisterRoute(
-                "Hardware.IOView",
-                typeof(PlaceholderView),
-                typeof(IOViewWidget));
+            registry.RegisterRoute("Hardware.IOView",
+                typeof(PlaceholderView), typeof(IOViewWidget));
+            registry.RegisterRoute("Hardware.ConfigView",
+                typeof(PlaceholderView), typeof(HardwareConfigWidget));
 
-            registry.RegisterRoute(
-                "Hardware.ConfigView",
-                typeof(PlaceholderView),
-                typeof(HardwareConfigWidget));
+            registry.RegisterMenu(new MenuInfo
+            {
+                Title = "IO交互",
+                WidgetId = "Hardware.IOView",
+                Icon = "SwapHorizontal",
+                Order = 3,
+                RequiredPermission = ""
+            });
+            registry.RegisterMenu(new MenuInfo
+            {
+                Title = "硬件配置",
+                WidgetId = "Hardware.ConfigView",
+                Icon = "ServerNetwork",
+                Order = 6,
+                RequiredPermission = Permissions.HardwareConfig
+            });
         }
 
         public IEnumerable<MenuInfo> GetMenuItems()

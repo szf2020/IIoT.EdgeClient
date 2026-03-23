@@ -70,8 +70,8 @@
                     <Style TargetType="TextBlock">
                         <Setter Property="Visibility" Value="Collapsed" />
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding ErrorMessage}" Value="">
-                                <Setter Property="Visibility" Value="Collapsed" />
+                            <DataTrigger Binding="{Binding HasError}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
@@ -90,7 +90,6 @@
                 FontWeight="SemiBold"
                 Foreground="White">
                 <Grid>
-                    <!--  正常状态文字  -->
                     <TextBlock
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center"
@@ -107,7 +106,6 @@
                         </TextBlock.Style>
                     </TextBlock>
 
-                    <!--  加载中转圈  -->
                     <ProgressBar
                         Width="20"
                         Height="20"

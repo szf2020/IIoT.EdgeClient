@@ -1,4 +1,4 @@
-﻿// 路径：src/Modules/IIoT.Edge.Module.Formula/FormulaModule.cs
+﻿using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Model;
 using IIoT.Edge.Module.Formula.RecipeView;
 using IIoT.Edge.UI.Shared.Modularity;
@@ -18,10 +18,17 @@ namespace IIoT.Edge.Module.Formula
 
         public void ConfigureViews(IViewRegistry registry)
         {
-            registry.RegisterRoute(
-                "Formula.RecipeView",
-                typeof(PlaceholderView),
-                typeof(RecipeViewWidget));
+            registry.RegisterRoute("Formula.RecipeView",
+                typeof(PlaceholderView), typeof(RecipeViewWidget));
+
+            registry.RegisterMenu(new MenuInfo
+            {
+                Title = "产品配方",
+                WidgetId = "Formula.RecipeView",
+                Icon = "FileDocumentOutline",
+                Order = 4,
+                RequiredPermission =""
+            });
         }
 
         public IEnumerable<MenuInfo> GetMenuItems()

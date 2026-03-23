@@ -1,5 +1,6 @@
 ﻿// 路径：src/Shared/IIoT.Edge.UI.Shared/Widgets/SysMenu/MenuItemViewModel.cs
 using IIoT.Edge.Contracts;
+using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Model;
 using IIoT.Edge.UI.Shared.Mvvm;
 

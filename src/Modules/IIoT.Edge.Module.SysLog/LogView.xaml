@@ -1,9 +1,9 @@
-﻿<!--路径：src/Modules/IIoT.Edge.Module.SysLog/LogView.xaml-->
-<UserControl x:Class="IIoT.Edge.Module.SysLog.LogView"
-             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-             Background="Transparent">
+﻿<UserControl
+    x:Class="IIoT.Edge.Module.SysLog.LogView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    Background="Transparent">
 
     <Grid>
         <Grid.RowDefinitions>
@@ -11,63 +11,86 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 工具栏 -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal"
-                    Margin="8,4,8,4">
-            <TextBlock Text="系统日志"
-                       FontSize="13" FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       Foreground="{DynamicResource MaterialDesignBody}" />
-            <Button Command="{Binding ClearCommand}"
-                    Margin="12,0,0,0"
+        <!--  工具栏：低调小按钮  -->
+        <Border
+            Grid.Row="0"
+            Padding="8,4"
+            BorderBrush="#27272A"
+            BorderThickness="0,0,0,1">
+            <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                <Button
+                    Height="22"
+                    Padding="4,0"
+                    Command="{Binding ClearCommand}"
                     Style="{StaticResource MaterialDesignFlatButton}"
-                    ToolTip="清空日志"
-                    Height="24" Padding="8,0">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="DeleteOutline" Width="14" Height="14" />
-                    <TextBlock Text="清空" Margin="4,0,0,0" FontSize="12" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
+                    ToolTip="清空日志">
+                    <StackPanel Orientation="Horizontal">
+                        <materialDesign:PackIcon
+                            Width="12"
+                            Height="12"
+                            VerticalAlignment="Center"
+                            Foreground="#52525B"
+                            Kind="DeleteOutline" />
+                        <TextBlock
+                            Margin="4,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="#52525B"
+                            Text="清空" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
 
-        <!-- 日志列表 -->
-        <ListView Grid.Row="1"
-                  ItemsSource="{Binding Entries}"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  VirtualizingPanel.IsVirtualizing="True"
-                  VirtualizingPanel.VirtualizationMode="Recycling"
-                  ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+        <!--  日志列表  -->
+        <ListView
+            Grid.Row="1"
+            Background="Transparent"
+            BorderThickness="0"
+            ItemsSource="{Binding Entries}"
+            ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+            VirtualizingPanel.IsVirtualizing="True"
+            VirtualizingPanel.VirtualizationMode="Recycling">
             <ListView.ItemContainerStyle>
                 <Style TargetType="ListViewItem">
-                    <Setter Property="Padding" Value="4,2" />
+                    <Setter Property="Padding" Value="8,2" />
                     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                     <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate TargetType="ListViewItem">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.ItemTemplate>
                 <DataTemplate>
-                    <Grid>
+                    <Grid Margin="8,2">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="140" />
-                            <ColumnDefinition Width="52" />
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="44" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- 时间 -->
-                        <TextBlock Grid.Column="0"
-                                   Text="{Binding Time, StringFormat='{}{0:MM-dd HH:mm:ss.fff}'}"
-                                   FontSize="11"
-                                   Foreground="{DynamicResource MaterialDesignBodyLight}" />
+                        <!--  时间  -->
+                        <TextBlock
+                            Grid.Column="0"
+                            FontSize="11"
+                            Foreground="#52525B"
+                            Text="{Binding Time, StringFormat='{}{0:MM-dd HH:mm:ss.fff}'}" />
 
-                        <!-- 级别（颜色区分） -->
-                        <TextBlock Grid.Column="1"
-                                   Text="{Binding Level}"
-                                   FontSize="11"
-                                   FontWeight="SemiBold">
+                        <!--  级别  -->
+                        <TextBlock
+                            Grid.Column="1"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Text="{Binding Level}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+                                    <Setter Property="Foreground" Value="#A1A1AA" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Level}" Value="ERROR">
                                             <Setter Property="Foreground" Value="#F44336" />
@@ -89,13 +112,13 @@
                             </TextBlock.Style>
                         </TextBlock>
 
-                        <!-- 消息 -->
-                        <TextBlock Grid.Column="2"
-                                   Text="{Binding Message}"
-                                   FontSize="11"
-                                   TextWrapping="NoWrap"
-                                   TextTrimming="CharacterEllipsis"
-                                   Foreground="{DynamicResource MaterialDesignBody}" />
+                        <!--  消息  -->
+                        <TextBlock
+                            Grid.Column="2"
+                            FontSize="11"
+                            Foreground="#A1A1AA"
+                            Text="{Binding Message}"
+                            TextWrapping="Wrap" />
                     </Grid>
                 </DataTemplate>
             </ListView.ItemTemplate>

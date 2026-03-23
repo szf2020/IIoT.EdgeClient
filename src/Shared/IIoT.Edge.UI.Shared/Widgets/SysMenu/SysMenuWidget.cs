@@ -1,7 +1,6 @@
-﻿// 路径：src/Shared/IIoT.Edge.UI.Shared/Widgets/SysMenu/SysMenuWidget.cs
-using IIoT.Edge.Common.Mvvm;
+﻿using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.Model;
+using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.UI.Shared.Modularity;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using MaterialDesignThemes.Wpf;
@@ -34,7 +33,10 @@ namespace IIoT.Edge.UI.Shared.Widgets.SysMenu
             ? $"注销 ({_authService.CurrentUser?.DisplayName})"
             : "登录";
 
-        public SysMenuWidget(INavigationService navigationService, IAuthService authService)
+        public SysMenuWidget(
+            INavigationService navigationService,
+            IAuthService authService,
+            IViewRegistry viewRegistry)
         {
             _navigationService = navigationService;
             _authService = authService;
@@ -51,23 +53,14 @@ namespace IIoT.Edge.UI.Shared.Widgets.SysMenu
                 OnPropertyChanged(nameof(LoginButtonText));
             };
 
-            BuildMenuItems();
+            // 从 ViewRegistry 动态加载菜单
+            BuildMenuItemsFromRegistry(viewRegistry);
         }
 
-        private void BuildMenuItems()
+        private void BuildMenuItemsFromRegistry(IViewRegistry viewRegistry)
         {
-            var menus = new List<MenuInfo>
-            {
-                new() { Title = "生产数据", WidgetId = "Production.DataView",     Icon = "ChartBar",            Order = 1, RequiredPermission = "" },
-                new() { Title = "产能查询", WidgetId = "Production.CapacityView", Icon = "ChartLine",           Order = 2, RequiredPermission = "" },
-                new() { Title = "IO交互",   WidgetId = "Hardware.IOView",         Icon = "SwapHorizontal",      Order = 3, RequiredPermission = "" },
-                new() { Title = "产品配方", WidgetId = "Formula.RecipeView",      Icon = "FileDocumentOutline", Order = 4, RequiredPermission = Permissions.RecipeRead },
-                new() { Title = "参数配置", WidgetId = "Config.ParamView",        Icon = "Cog",                 Order = 5, RequiredPermission = Permissions.ParamConfig },
-                new() { Title = "硬件配置", WidgetId = "Hardware.ConfigView",     Icon = "ServerNetwork",       Order = 6, RequiredPermission = Permissions.HardwareConfig },
-            };
-
             MenuItems.Clear();
-            foreach (var menu in menus.OrderBy(m => m.Order))
+            foreach (var menu in viewRegistry.GetAllMenus().OrderBy(m => m.Order))
                 MenuItems.Add(new MenuItemViewModel(menu, _authService));
         }
 
@@ -97,14 +90,9 @@ namespace IIoT.Edge.UI.Shared.Widgets.SysMenu
         private void ExecuteLogin()
         {
             if (_authService.IsAuthenticated)
-            {
                 _authService.Logout();
-            }
             else
-            {
-                // 打开 MainWindow 里定义的 DialogHost
                 DialogHost.OpenDialogCommand.Execute(null, null);
-            }
         }
     }
 }

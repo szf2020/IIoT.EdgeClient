@@ -1,6 +1,7 @@
 ﻿// 路径：src/Infrastructure/IIoT.Edge.CloudSync/Auth/AuthService.cs
 using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
+using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Model;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
@@ -8,11 +9,6 @@ using System.Security.Claims;
 
 namespace IIoT.Edge.CloudSync.Auth
 {
-    /// <summary>
-    /// IAuthService 实现。
-    /// 双轨登录：本地紧急管理员（断网保底）+ 云端 JWT 登录。
-    /// 完全依赖 IIoT.Edge.Contracts 抽象，不依赖任何 UI 层。
-    /// </summary>
     public class AuthService : IAuthService
     {
         private readonly HttpClient _httpClient;
@@ -28,21 +24,17 @@ namespace IIoT.Edge.CloudSync.Auth
             _localAdminConfig = localAdminConfig;
         }
 
-        // ── 权限判断 ─────────────────────────────────────────────────
         public bool HasPermission(string permission)
         {
             if (CurrentUser is null) return false;
             if (CurrentUser.IsLocalAdmin) return true;
-            // 云端 Admin 角色全放行
             if (CurrentUser.Permissions.Contains("Admin")) return true;
             return CurrentUser.Permissions.Contains(permission);
         }
 
-        // ── 本地紧急管理员登录 ────────────────────────────────────────
         public Task<AuthResult> LoginLocalAsync(string password)
         {
             var inputHash = ComputeSha256(password);
-
             if (inputHash != _localAdminConfig.PasswordHash)
                 return Task.FromResult(AuthResult.Fail("密码错误"));
 
@@ -58,24 +50,42 @@ namespace IIoT.Edge.CloudSync.Auth
             return Task.FromResult(AuthResult.Ok("本地管理员登录成功"));
         }
 
-        // ── 云端账号登录 ──────────────────────────────────────────────
-        public async Task<AuthResult> LoginCloudAsync(string employeeNo, string password)
+        /// <summary>
+        /// 云端设备登录：调用 device-login 接口，携带 DeviceId 做设备绑定校验
+        /// </summary>
+        public async Task<AuthResult> LoginCloudAsync(
+            string employeeNo,
+            string password,
+            Guid? deviceId = null)
         {
             try
             {
                 var response = await _httpClient.PostAsJsonAsync(
-                    "/api/v1/Identity/login",
-                    new { employeeNo, password });
+                    "/api/v1/Identity/device-login",
+                    new
+                    {
+                        employeeNo,
+                        password,
+                        deviceId
+                    });
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorMsg = response.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                        ? "工号或密码错误"
-                        : $"登录失败：{response.StatusCode}";
+                    // 尝试读取云端返回的错误信息
+                    var errors = await response.Content
+                        .ReadFromJsonAsync<string[]>();
+
+                    var errorMsg = errors?.FirstOrDefault()
+                        ?? response.StatusCode switch
+                        {
+                            System.Net.HttpStatusCode.Unauthorized => "工号或密码错误",
+                            System.Net.HttpStatusCode.Forbidden => "您无权操作此设备，请联系管理员绑定设备权限",
+                            _ => $"登录失败：{response.StatusCode}"
+                        };
+
                     return AuthResult.Fail(errorMsg);
                 }
 
-                // 云端直接返回 JWT 字符串
                 var token = await response.Content.ReadAsStringAsync();
                 token = token.Trim('"');
 
@@ -89,6 +99,10 @@ namespace IIoT.Edge.CloudSync.Auth
                 SetSession(session);
                 return AuthResult.Ok($"欢迎，{session.DisplayName}");
             }
+            catch (TaskCanceledException)
+            {
+                return AuthResult.Fail("连接超时，请检查网络");
+            }
             catch (HttpRequestException)
             {
                 return AuthResult.Fail("无法连接到服务器，请检查网络");
@@ -99,13 +113,8 @@ namespace IIoT.Edge.CloudSync.Auth
             }
         }
 
-        // ── 注销 ──────────────────────────────────────────────────────
-        public void Logout()
-        {
-            SetSession(null);
-        }
+        public void Logout() => SetSession(null);
 
-        // ── 私有方法 ───────────────────────────────────────────────────
         private void SetSession(UserSession? session)
         {
             CurrentUser = session;
@@ -123,13 +132,10 @@ namespace IIoT.Edge.CloudSync.Auth
                     .FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.UniqueName)
                     ?.Value ?? "未知用户";
 
-                // 同时读 Permission 和 Role Claims
                 var permissions = jwtToken.Claims
-                    .Where(c => c.Type == "Permission" ||
-                                c.Type == ClaimTypes.Role)
+                    .Where(c => c.Type == "Permission" || c.Type == ClaimTypes.Role)
                     .Select(c => c.Value)
                     .ToHashSet();
-
                 return new UserSession
                 {
                     DisplayName = displayName,
@@ -138,10 +144,7 @@ namespace IIoT.Edge.CloudSync.Auth
                     Token = token
                 };
             }
-            catch
-            {
-                return null;
-            }
+            catch { return null; }
         }
 
         private static string ComputeSha256(string input)

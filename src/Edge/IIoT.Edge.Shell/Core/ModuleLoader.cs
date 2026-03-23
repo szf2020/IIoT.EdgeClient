@@ -1,4 +1,5 @@
-﻿using System;
+﻿// 路径：src/Edge/IIoT.Edge.Shell/Core/ModuleLoader.cs
+using System;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -13,53 +14,80 @@ namespace IIoT.Edge.Shell.Core
         private readonly IServiceCollection _services;
         private readonly IViewRegistry _registry;
 
+        // 通用模块前缀（所有机台都加载）
+        private static readonly string[] CommonModules =
+        {
+            "IIoT.Edge.Module.Hardware",
+            "IIoT.Edge.Module.Formula",
+            "IIoT.Edge.Module.Config",
+            "IIoT.Edge.Module.SysLog",
+            "IIoT.Edge.Module.Production",
+        };
+
         public ModuleLoader(IServiceCollection services, IViewRegistry registry)
         {
             _services = services;
             _registry = registry;
         }
 
-        public void LoadFromDirectory(string directory)
+        public void LoadFromDirectory(string directory, string? machineModule = null)
         {
             if (!Directory.Exists(directory)) return;
 
-            // 严格匹配重构后的模块命名规范
-            var moduleFiles = Directory.GetFiles(directory, "IIoT.Edge.Module.*.dll");
-
-            foreach (var file in moduleFiles)
+            // 1. 加载所有通用模块
+            foreach (var moduleName in CommonModules)
             {
-                try
+                var file = Path.Combine(directory, $"{moduleName}.dll");
+                LoadModule(file);
+            }
+
+            // 2. 加载机台专属模块（如果配置了的话）
+            if (!string.IsNullOrEmpty(machineModule))
+            {
+                var file = Path.Combine(directory, $"{machineModule}.dll");
+                LoadModule(file);
+            }
+        }
+
+        private void LoadModule(string file)
+        {
+            if (!File.Exists(file))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ModuleLoader] 模块文件不存在: {file}");
+                return;
+            }
+
+            try
+            {
+                var assembly = Assembly.LoadFrom(file);
+                var moduleTypes = assembly.GetTypes()
+                    .Where(t => typeof(IEdgeModule).IsAssignableFrom(t)
+                                && !t.IsInterface && !t.IsAbstract);
+
+                foreach (var type in moduleTypes)
                 {
-                    var assembly = Assembly.LoadFrom(file);
-                    var moduleTypes = assembly.GetTypes()
-                        .Where(t => typeof(IEdgeModule).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
-
-                    foreach (var type in moduleTypes)
+                    if (Activator.CreateInstance(type) is IEdgeModule module)
                     {
-                        if (Activator.CreateInstance(type) is IEdgeModule module)
-                        {
-                            // 1. 注册模块业务服务
-                            module.ConfigureServices(_services);
-                            // 2. 注册模块视图契约 (菜单、路由、AvalonDock面板)
-                            module.ConfigureViews(_registry);
-                            // 3. 注入模块私有样式
-                            InjectModuleStyles(assembly.GetName().Name!);
+                        module.ConfigureServices(_services);
+                        module.ConfigureViews(_registry);
+                        InjectModuleStyles(assembly.GetName().Name!);
 
-                            System.Diagnostics.Debug.WriteLine($"[Success] 模块已激活: {assembly.GetName().Name}");
-                        }
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ModuleLoader] 模块已激活: {assembly.GetName().Name}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Error] 模块加载异常 {file}: {ex.Message}");
-                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ModuleLoader] 模块加载异常 {file}: {ex.Message}");
             }
         }
 
         private void InjectModuleStyles(string assemblyName)
         {
-            // 每个模块的样式入口统一为 ModuleTheme.xaml
-            var resourceUri = new Uri($"/{assemblyName};component/ModuleTheme.xaml", UriKind.Relative);
+            var resourceUri = new Uri(
+                $"/{assemblyName};component/ModuleTheme.xaml", UriKind.Relative);
             try
             {
                 var dict = new ResourceDictionary { Source = resourceUri };
