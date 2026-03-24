@@ -1,8 +1,5 @@
-﻿using AutoMapper;
-using IIoT.Edge.Common.Repository;
-using IIoT.Edge.Contracts.Auth;
+﻿using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Model;
-using IIoT.Edge.Domain.Hardware.Aggregates;
 using IIoT.Edge.Module.Hardware.HardwareConfigView;
 using IIoT.Edge.Module.Hardware.IOView;
 using IIoT.Edge.UI.Shared.Modularity;
@@ -17,16 +14,16 @@ public class HardwareModule : IEdgeModule
 
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddTransient<IOViewWidget>();
-        services.AddTransient<HardwareConfigWidget>();
+        // 空 — 所有注册已移入 DependencyInjection.cs
     }
 
     public void ConfigureViews(IViewRegistry registry)
     {
         registry.RegisterRoute("Hardware.IOView",
-            typeof(PlaceholderView), typeof(IOViewWidget));
+            typeof(IOViewPage), typeof(IOViewWidget));
         registry.RegisterRoute("Hardware.ConfigView",
-            typeof(HardwareConfigPage), typeof(HardwareConfigWidget));
+            typeof(HardwareConfigPage),
+            typeof(HardwareConfigWidget));
 
         registry.RegisterMenu(new MenuInfo
         {

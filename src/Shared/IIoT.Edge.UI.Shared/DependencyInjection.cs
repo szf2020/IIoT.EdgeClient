@@ -15,7 +15,6 @@ public static class DependencyInjection
         services.AddSingleton<SysMenuWidget>();
         services.AddSingleton<LoginWidget>();
         services.AddSingleton<FooterWidget>();
-
         return services;
     }
 }

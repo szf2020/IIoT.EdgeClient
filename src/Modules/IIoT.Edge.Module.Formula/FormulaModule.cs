@@ -1,8 +1,6 @@
-﻿using IIoT.Edge.Contracts.Auth;
-using IIoT.Edge.Contracts.Model;
+﻿using IIoT.Edge.Contracts.Model;
 using IIoT.Edge.Module.Formula.RecipeView;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.UI.Shared.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IIoT.Edge.Module.Formula
@@ -11,15 +9,15 @@ namespace IIoT.Edge.Module.Formula
     {
         public string ModuleName => "Formula";
 
-        public void ConfigureServices(IServiceCollection services)
-        {
-            services.AddTransient<RecipeViewWidget>();
-        }
+        public void ConfigureServices(
+            IServiceCollection services)
+        { }
 
         public void ConfigureViews(IViewRegistry registry)
         {
             registry.RegisterRoute("Formula.RecipeView",
-                typeof(PlaceholderView), typeof(RecipeViewWidget));
+                typeof(RecipeViewPage),
+                typeof(RecipeViewWidget));
 
             registry.RegisterMenu(new MenuInfo
             {
@@ -27,7 +25,7 @@ namespace IIoT.Edge.Module.Formula
                 WidgetId = "Formula.RecipeView",
                 Icon = "FileDocumentOutline",
                 Order = 4,
-                RequiredPermission =""
+                RequiredPermission = ""
             });
         }
 

@@ -3,7 +3,6 @@ using IIoT.Edge.Module.Production.CapacityView;
 using IIoT.Edge.Module.Production.DataView;
 using IIoT.Edge.Module.Production.Equipment;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.UI.Shared.Widgets;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace IIoT.Edge.Module.Production
@@ -14,17 +13,14 @@ namespace IIoT.Edge.Module.Production
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddTransient<DataViewWidget>();
-            services.AddTransient<CapacityViewWidget>();
-            services.AddSingleton<EquipmentWidget>();
         }
 
         public void ConfigureViews(IViewRegistry registry)
         {
             registry.RegisterRoute("Production.DataView",
-                typeof(PlaceholderView), typeof(DataViewWidget));
+                typeof(DataViewPage), typeof(DataViewWidget));
             registry.RegisterRoute("Production.CapacityView",
-                typeof(PlaceholderView), typeof(CapacityViewWidget));
+                typeof(CapacityViewPage), typeof(CapacityViewWidget));
             registry.RegisterAnchorable(
                 new AnchorableInfo
                 {

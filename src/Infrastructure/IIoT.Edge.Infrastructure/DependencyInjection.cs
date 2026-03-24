@@ -1,4 +1,8 @@
 ﻿using IIoT.Edge.Common.Repository;
+using IIoT.Edge.Contracts.Cache;
+using IIoT.Edge.Contracts.Config;
+using IIoT.Edge.Infrastructure.Cache;
+using IIoT.Edge.Infrastructure.Config.Services;
 using IIoT.Edge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,19 +15,36 @@ public static class DependencyInjection
         this IServiceCollection services,
         string dbPath)
     {
-        services.AddDbContext<EdgeDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath}"));
+        services.AddDbContextFactory<EdgeDbContext>(
+            options =>
+                options.UseSqlite(
+                    $"Data Source={dbPath}"));
 
-        services.AddScoped(typeof(IReadRepository<>), typeof(EfReadRepository<>));
-        services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
+        services.AddSingleton(typeof(IReadRepository<>),
+            typeof(EfReadRepository<>));
+        services.AddSingleton(typeof(IRepository<>),
+            typeof(EfRepository<>));
+
+        // 通用缓存
+        services.AddSingleton<IEdgeCacheService,
+            EdgeCacheService>();
+
+        // 参数配置服务
+        services.AddSingleton<ISystemConfigService,
+            SystemConfigService>();
+        services.AddSingleton<IDeviceParamService,
+            DeviceParamService>();
 
         return services;
     }
 
-    public static void ApplyMigrations(this IServiceProvider serviceProvider)
+    public static void ApplyMigrations(
+        this IServiceProvider serviceProvider)
     {
-        using var scope = serviceProvider.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<EdgeDbContext>();
+        var factory = serviceProvider
+            .GetRequiredService<
+                IDbContextFactory<EdgeDbContext>>();
+        using var db = factory.CreateDbContext();
         db.Database.Migrate();
     }
 }

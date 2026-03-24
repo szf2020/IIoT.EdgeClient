@@ -1,14 +1,14 @@
 using IIoT.Edge.CloudSync;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.Infrastructure;
-using IIoT.Edge.Module.Hardware;
-using IIoT.Edge.Module.Hardware.HardwareConfigView.Mappings;
 using IIoT.Edge.PlcDevice;
+using IIoT.Edge.Module.Hardware;
+using IIoT.Edge.Module.Production;
+using IIoT.Edge.Module.Config;
+using IIoT.Edge.Module.Formula;
+using IIoT.Edge.Module.SysLog;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.UI.Shared;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.UI.Shared.Widgets.Footer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
@@ -31,37 +31,47 @@ namespace IIoT.Edge.Shell
 
             var configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
+                .AddJsonFile("appsettings.json", optional: false)
                 .Build();
 
             var services = new ServiceCollection();
             var viewRegistry = new ViewRegistry();
 
-            // 1. 模块扫描
+            // 1. 模块扫描（只做路由/菜单注册，不注册服务）
             var machineModule = configuration["MachineModule"];
             IModuleLoader loader = new ModuleLoader(services, viewRegistry);
-            loader.LoadFromDirectory(AppDomain.CurrentDomain.BaseDirectory, machineModule);
+            loader.LoadFromDirectory(
+                AppDomain.CurrentDomain.BaseDirectory, machineModule);
 
-            // 2. 各层注入
+            // 2. 各层 DI — 每层自己的扩展方法，App只调不写
             var dbPath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                Environment.GetFolderPath(
+                    Environment.SpecialFolder.ApplicationData),
                 "IIoT.Edge", "edge.db");
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);  // 加这行
-            services.AddAutoMapper(cfg => cfg.AddProfile<HardwareMappingProfile>());
-            services.AddSingleton<IViewRegistry>(viewRegistry);
-            services.AddSingleton<INavigationService, NavigationService>();
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+
             services.AddInfrastructure(dbPath);
             services.AddCloudSync(configuration);
-            services.AddShellWidgets();
-            services.AddShell();
             services.AddPlcDevice();
+            services.AddShellWidgets();
+            services.AddShell(viewRegistry);
             services.AddHardwareModule();
+            services.AddProductionModule();
+            services.AddConfigModule();
+            services.AddFormulaModule();
+            services.AddSysLogModule();
+
+            // 已删除: services.AddAutoMapper(...)  → 移入 Shell DI
+            // 已删除: services.AddSingleton<IViewRegistry>(...)  → 移入 Shell DI
+            // 已删除: services.AddSingleton<INavigationService>(...)  → 移入 Shell DI
+
             // 3. 构建容器
             ServiceProvider = services.BuildServiceProvider();
-            // 自动执行迁移
             ServiceProvider.ApplyMigrations();
+
             // 4. 启动主窗体
-            var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+            var mainWindow = ServiceProvider
+                .GetRequiredService<MainWindow>();
             mainWindow.Show();
 
             // 5. 异步设备寻址
@@ -70,22 +80,31 @@ namespace IIoT.Edge.Shell
 
         private async Task IdentifyDeviceAsync()
         {
-            var deviceService = ServiceProvider.GetRequiredService<IDeviceService>();
-            var footerWidget = ServiceProvider.GetRequiredService<FooterWidget>();
-            var logService = ServiceProvider.GetRequiredService<ILogService>();
+            var deviceService = ServiceProvider
+                .GetRequiredService<
+                    IIoT.Edge.Contracts.Device.IDeviceService>();
+            var footerWidget = ServiceProvider
+                .GetRequiredService<
+                    IIoT.Edge.UI.Shared.Widgets.Footer.FooterWidget>();
+            var logService = ServiceProvider
+                .GetRequiredService<
+                    IIoT.Edge.Contracts.ILogService>();
 
             logService.Info("正在进行设备寻址...");
             var success = await deviceService.IdentifyAsync();
 
-            if (success && deviceService.CurrentDevice is not null)
+            if (success
+                && deviceService.CurrentDevice is not null)
             {
-                footerWidget.SetDeviceCode(deviceService.CurrentDevice.DeviceCode);
-                logService.Info($"设备寻址成功：{deviceService.CurrentDevice.DeviceCode}");
+                footerWidget.SetDeviceCode(
+                    deviceService.CurrentDevice.DeviceCode);
+                logService.Info(
+                    $"设备寻址成功：{deviceService.CurrentDevice.DeviceCode}");
             }
             else
             {
                 footerWidget.SetDeviceCode("未识别");
-                logService.Warn("设备寻址失败，请检查网络或云端设备注册");
+                logService.Warn("设备寻址失败");
             }
         }
     }

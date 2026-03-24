@@ -104,6 +104,5 @@
         <Setter Property="BorderThickness" Value="0" />
     </Style>
 
-
     <converters:InverseBooleanConverter x:Key="InverseBooleanConverter" />
 </ResourceDictionary>

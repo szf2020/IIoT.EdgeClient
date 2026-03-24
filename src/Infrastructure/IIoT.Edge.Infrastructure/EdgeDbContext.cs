@@ -1,18 +1,33 @@
-﻿using IIoT.Edge.Domain.Hardware.Aggregates;
+﻿using IIoT.Edge.Domain.Config.Aggregates;
+using IIoT.Edge.Domain.Hardware.Aggregates;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace IIoT.Edge.Infrastructure;
 
-public class EdgeDbContext(DbContextOptions<EdgeDbContext> options) : DbContext(options)
+public class EdgeDbContext(
+    DbContextOptions<EdgeDbContext> options)
+    : DbContext(options)
 {
-    public DbSet<NetworkDeviceEntity> NetworkDevices => Set<NetworkDeviceEntity>();
-    public DbSet<SerialDeviceEntity> SerialDevices => Set<SerialDeviceEntity>();
-    public DbSet<IoMappingEntity> IoMappings => Set<IoMappingEntity>();
+    // Hardware
+    public DbSet<NetworkDeviceEntity> NetworkDevices
+        => Set<NetworkDeviceEntity>();
+    public DbSet<SerialDeviceEntity> SerialDevices
+        => Set<SerialDeviceEntity>();
+    public DbSet<IoMappingEntity> IoMappings
+        => Set<IoMappingEntity>();
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    // Config
+    public DbSet<SystemConfigEntity> SystemConfigs
+        => Set<SystemConfigEntity>();
+    public DbSet<DeviceParamEntity> DeviceParams
+        => Set<DeviceParamEntity>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
     {
-        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            Assembly.GetExecutingAssembly());
         base.OnModelCreating(modelBuilder);
     }
 }

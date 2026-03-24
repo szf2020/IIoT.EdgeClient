@@ -1,8 +1,7 @@
-﻿// 路径：src/Modules/IIoT.Edge.Module.SysLog/SysLogModule.cs
-using IIoT.Edge.UI.Shared.Modularity;
-using Microsoft.Extensions.DependencyInjection;
+﻿using IIoT.Edge.UI.Shared.Modularity;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Model;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IIoT.Edge.Module.SysLog
 {
@@ -12,8 +11,7 @@ namespace IIoT.Edge.Module.SysLog
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddSingleton<ILogService, LogService>();
-            services.AddSingleton<LogWidget>();
+            // 空 — 已移入 DependencyInjection.cs
         }
 
         public void ConfigureViews(IViewRegistry registry)
@@ -31,6 +29,6 @@ namespace IIoT.Edge.Module.SysLog
         }
 
         public IEnumerable<MenuInfo> GetMenuItems()
-    => Enumerable.Empty<MenuInfo>();
+            => Enumerable.Empty<MenuInfo>();
     }
 }

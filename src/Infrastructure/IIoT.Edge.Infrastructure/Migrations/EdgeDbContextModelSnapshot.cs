@@ -16,6 +16,93 @@ namespace IIoT.Edge.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
+            modelBuilder.Entity("IIoT.Edge.Domain.Config.Aggregates.DeviceParamEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("MaxValue")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("max_value");
+
+                    b.Property<string>("MinValue")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("min_value");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<int>("NetworkDeviceId")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("network_device_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("unit");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NetworkDeviceId")
+                        .HasDatabaseName("ix_cfg_device_param_device_id");
+
+                    b.ToTable("cfg_device_param", (string)null);
+                });
+
+            modelBuilder.Entity("IIoT.Edge.Domain.Config.Aggregates.SystemConfigEntity", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("description");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("ix_cfg_system_config_key");
+
+                    b.ToTable("cfg_system_config", (string)null);
+                });
+
             modelBuilder.Entity("IIoT.Edge.Domain.Hardware.Aggregates.IoMappingEntity", b =>
                 {
                     b.Property<int>("Id")
@@ -211,6 +298,17 @@ namespace IIoT.Edge.Infrastructure.Migrations
                         .HasDatabaseName("ix_hw_serial_device_port_name");
 
                     b.ToTable("hw_serial_device", (string)null);
+                });
+
+            modelBuilder.Entity("IIoT.Edge.Domain.Config.Aggregates.DeviceParamEntity", b =>
+                {
+                    b.HasOne("IIoT.Edge.Domain.Hardware.Aggregates.NetworkDeviceEntity", "NetworkDevice")
+                        .WithMany()
+                        .HasForeignKey("NetworkDeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NetworkDevice");
                 });
 
             modelBuilder.Entity("IIoT.Edge.Domain.Hardware.Aggregates.IoMappingEntity", b =>

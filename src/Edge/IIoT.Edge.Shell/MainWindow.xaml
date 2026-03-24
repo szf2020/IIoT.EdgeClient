@@ -8,7 +8,6 @@
     xmlns:headerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SystemHeader;assembly=IIoT.Edge.UI.Shared"
     xmlns:loginVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.Login;assembly=IIoT.Edge.UI.Shared"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-    xmlns:shared="clr-namespace:IIoT.Edge.UI.Shared.Widgets;assembly=IIoT.Edge.UI.Shared"
     xmlns:sysLog="clr-namespace:IIoT.Edge.Module.SysLog;assembly=IIoT.Edge.Module.SysLog"
     xmlns:sysMenuVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SysMenu;assembly=IIoT.Edge.UI.Shared"
     Title="IIoT Edge Client"
@@ -88,12 +87,12 @@
                         <avalon:LayoutPanel Orientation="Horizontal">
 
                             <!--  主内容区  -->
-                            <avalon:LayoutDocumentPane>
+                            <avalon:LayoutDocumentPane ShowHeader="False">
                                 <avalon:LayoutDocument
                                     Title="主工作区"
                                     CanClose="False"
                                     CanFloat="False">
-                                    <Border Margin="-2" Background="#1E1E1E">
+                                    <Border Background="#1E1E1E">
                                         <ContentControl Content="{Binding CurrentView}" />
                                     </Border>
                                 </avalon:LayoutDocument>
@@ -101,7 +100,6 @@
 
                             <!--  右侧常驻面板  -->
                             <avalon:LayoutAnchorablePaneGroup DockWidth="320" Orientation="Vertical">
-                                <!--  设备信息面板  -->
                                 <avalon:LayoutAnchorablePane>
                                     <avalon:LayoutAnchorable
                                         Title="设备信息"
@@ -113,7 +111,6 @@
                                     </avalon:LayoutAnchorable>
                                 </avalon:LayoutAnchorablePane>
 
-                                <!--  日志面板  -->
                                 <avalon:LayoutAnchorablePane>
                                     <avalon:LayoutAnchorable
                                         Title="系统日志"
