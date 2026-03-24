@@ -19,8 +19,12 @@
     <Project Path="src/Modules/IIoT.Edge.Module.SysLog/IIoT.Edge.Module.SysLog.csproj" Id="b2b8d324-a68a-44d1-92fa-f4400617444b" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/IIoT.Edge.Common/IIoT.Edge.Common.csproj" />
     <Project Path="src/Shared/IIoT.Edge.Contracts/IIoT.Edge.Contracts.csproj" Id="000cbd33-c27e-41cc-8f60-e5bc79c7296f" />
-    <Project Path="src/Shared/IIoT.Edge.SharedKernel/IIoT.Edge.Common.csproj" />
     <Project Path="src/Shared/IIoT.Edge.UI.Shared/IIoT.Edge.UI.Shared.csproj" Id="2c8e15da-52ba-4d59-aced-196d42918475" />
+  </Folder>
+  <Folder Name="/src/Tasks/">
+    <Project Path="src/Tasks/IIoT.Edge.Task.Scan/IIoT.Edge.Task.Scan.csproj" Id="1b084c68-6e45-466a-8a98-438cf08eac27" />
+    <Project Path="src/Tasks/IIoT.Edge.Tasks/IIoT.Edge.Tasks.csproj" Id="0af2fc95-d944-481f-89e1-897ba043a59d" />
   </Folder>
 </Solution>
