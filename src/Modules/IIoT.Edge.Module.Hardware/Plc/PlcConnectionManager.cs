@@ -75,14 +75,18 @@ public class PlcConnectionManager : IDisposable
 
         foreach (var device in devices)
         {
-            try
+            // 【修改点】：使用 Task.Run 将每个设备的初始化放入后台独立运行，互不阻塞
+            _ = Task.Run(async () =>
             {
-                await InitializeDeviceAsync(device, ct);
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"[{device.DeviceName}] 初始化失败: {ex.Message}");
-            }
+                try
+                {
+                    await InitializeDeviceAsync(device, ct);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"[{device.DeviceName}] 初始化失败: {ex.Message}");
+                }
+            }, ct);
         }
     }
 
@@ -137,8 +141,21 @@ public class PlcConnectionManager : IDisposable
 
         _plcTasks[device.Id] = tasks;
 
+        // 【修改点】：不再直接 await，而是把每个长任务放到后台独立运行
         foreach (var task in tasks)
-            await task.StartAsync(deviceCts.Token);
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await task.StartAsync(deviceCts.Token);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"[{device.DeviceName}] Task异常: {ex.Message}");
+                }
+            }, deviceCts.Token);
+        }
 
         _logger.Info($"[{device.DeviceName}] 初始化完成，启动 {tasks.Count} 个Task" +
             $"（上下文步骤: {string.Join(", ", context.StepStates.Select(kv => $"{kv.Key}={kv.Value}"))})");

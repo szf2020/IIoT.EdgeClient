@@ -8,6 +8,7 @@
     xmlns:headerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SystemHeader;assembly=IIoT.Edge.UI.Shared"
     xmlns:loginVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.Login;assembly=IIoT.Edge.UI.Shared"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:monitor="clr-namespace:IIoT.Edge.Module.Production.Monitor;assembly=IIoT.Edge.Module.Production"
     xmlns:sysLog="clr-namespace:IIoT.Edge.Module.SysLog;assembly=IIoT.Edge.Module.SysLog"
     xmlns:sysMenuVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SysMenu;assembly=IIoT.Edge.UI.Shared"
     Title="IIoT Edge Client"
@@ -53,7 +54,6 @@
                     <RowDefinition Height="30" />
                 </Grid.RowDefinitions>
 
-                <!--  ① 左侧导航栏（跨三行）  -->
                 <Border
                     Grid.Row="0"
                     Grid.RowSpan="3"
@@ -65,7 +65,6 @@
                     <sysMenuVM:SysMenuView DataContext="{Binding SysMenuViewModel}" />
                 </Border>
 
-                <!--  ② 头部  -->
                 <ContentControl
                     Grid.Row="0"
                     Grid.Column="1"
@@ -77,7 +76,6 @@
                     </ContentControl.ContentTemplate>
                 </ContentControl>
 
-                <!--  ③ 主工作区：AvalonDock  -->
                 <avalon:DockingManager
                     Grid.Row="1"
                     Grid.Column="1"
@@ -86,7 +84,6 @@
                     <avalon:LayoutRoot>
                         <avalon:LayoutPanel Orientation="Horizontal">
 
-                            <!--  主内容区  -->
                             <avalon:LayoutDocumentPane ShowHeader="False">
                                 <avalon:LayoutDocument
                                     Title="主工作区"
@@ -98,8 +95,8 @@
                                 </avalon:LayoutDocument>
                             </avalon:LayoutDocumentPane>
 
-                            <!--  右侧常驻面板  -->
                             <avalon:LayoutAnchorablePaneGroup DockWidth="320" Orientation="Vertical">
+
                                 <avalon:LayoutAnchorablePane>
                                     <avalon:LayoutAnchorable
                                         Title="设备信息"
@@ -121,13 +118,13 @@
                                         <sysLog:LogView DataContext="{Binding LogViewModel}" />
                                     </avalon:LayoutAnchorable>
                                 </avalon:LayoutAnchorablePane>
+
                             </avalon:LayoutAnchorablePaneGroup>
 
                         </avalon:LayoutPanel>
                     </avalon:LayoutRoot>
                 </avalon:DockingManager>
 
-                <!--  ④ Footer  -->
                 <ContentControl
                     Grid.Row="2"
                     Grid.Column="1"

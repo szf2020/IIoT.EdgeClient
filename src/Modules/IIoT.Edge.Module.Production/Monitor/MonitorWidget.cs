@@ -2,32 +2,35 @@
 using IIoT.Edge.Tasks.Context;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Windows.Threading;
 
 namespace IIoT.Edge.Module.Production.Monitor;
 
-/// <summary>
-/// 实时数据监控 ViewModel
-/// 定时从 ProductionContextStore 读取数据刷新展示
-/// </summary>
 public class MonitorWidget : WidgetBase
 {
-    public override string WidgetId => "Core.Monitor";
+    public override string WidgetId => "Production.Monitor";
     public override string WidgetName => "实时数据监控";
 
     private readonly ProductionContextStore _contextStore;
     private readonly DispatcherTimer _refreshTimer;
 
     /// <summary>
-    /// 所有设备的监控数据
+    /// 所有PLC设备Tab列表
     /// </summary>
-    public ObservableCollection<DeviceMonitorVm> Devices { get; } = new();
+    public ObservableCollection<DeviceTabVm> DeviceTabs { get; } = new();
+
+    private int _selectedTabIndex;
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set { _selectedTabIndex = value; OnPropertyChanged(); }
+    }
 
     public MonitorWidget(ProductionContextStore contextStore)
     {
         _contextStore = contextStore;
 
-        // 500ms 定时刷新，避免高频事件卡UI
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
@@ -40,64 +43,98 @@ public class MonitorWidget : WidgetBase
     {
         var contexts = _contextStore.GetAll();
 
-        // 增删设备
+        // 增删设备Tab
         var currentIds = contexts.Select(c => c.DeviceId).ToHashSet();
-        var removeList = Devices.Where(d => !currentIds.Contains(d.DeviceId)).ToList();
+        var removeList = DeviceTabs.Where(d => !currentIds.Contains(d.DeviceId)).ToList();
         foreach (var item in removeList)
-            Devices.Remove(item);
+            DeviceTabs.Remove(item);
 
         foreach (var ctx in contexts)
         {
-            var vm = Devices.FirstOrDefault(d => d.DeviceId == ctx.DeviceId);
-            if (vm is null)
+            var tab = DeviceTabs.FirstOrDefault(d => d.DeviceId == ctx.DeviceId);
+            if (tab is null)
             {
-                vm = new DeviceMonitorVm { DeviceId = ctx.DeviceId };
-                Devices.Add(vm);
+                tab = new DeviceTabVm { DeviceId = ctx.DeviceId };
+                DeviceTabs.Add(tab);
             }
 
-            // 更新设备信息
-            vm.DeviceName = ctx.DeviceName;
+            tab.DeviceName = ctx.DeviceName;
 
-            // 更新状态机步骤
-            vm.StepStates.Clear();
-            foreach (var kv in ctx.StepStates)
-                vm.StepStates.Add(new KeyValueVm(kv.Key, kv.Value.ToString()));
+            // 设备级数据摘要
+            var deviceInfo = string.Join("  ",
+                ctx.DeviceBag.OrderBy(kv => kv.Key)
+                    .Select(kv => $"{kv.Key}={FormatValue(kv.Value)}"));
+            tab.DeviceDataSummary = string.IsNullOrEmpty(deviceInfo) ? "暂无数据" : deviceInfo;
 
-            // 更新设备级数据
-            vm.DeviceData.Clear();
-            foreach (var kv in ctx.DeviceBag.OrderBy(x => x.Key))
-                vm.DeviceData.Add(new KeyValueVm(kv.Key, FormatValue(kv.Value)));
+            // 状态机摘要
+            var stepInfo = string.Join("  ",
+                ctx.StepStates.Select(kv => $"{kv.Key}={kv.Value}"));
+            tab.StepSummary = string.IsNullOrEmpty(stepInfo) ? "暂无任务" : stepInfo;
 
-            // 更新在制电芯
-            vm.CellCount = ctx.CellBags.Count;
-            vm.Cells.Clear();
-            foreach (var cell in ctx.CellBags)
-            {
-                var cellVm = new CellMonitorVm { Barcode = cell.Key };
-                foreach (var kv in cell.Value.OrderBy(x => x.Key))
-                    cellVm.Data.Add(new KeyValueVm(kv.Key, FormatValue(kv.Value)));
-                vm.Cells.Add(cellVm);
-            }
+            // 电芯数据 → DataTable（动态列）
+            tab.CellCount = ctx.CellBags.Count;
+            tab.CellTable = BuildCellTable(ctx);
         }
+    }
+
+    /// <summary>
+    /// 从 CellBags 构建 DataTable，行=电芯条码，列=所有Key的并集
+    /// </summary>
+    private static DataTable BuildCellTable(ProductionContext ctx)
+    {
+        var table = new DataTable();
+
+        // 第一列固定：条码
+        table.Columns.Add("条码", typeof(string));
+
+        if (ctx.CellBags.Count == 0)
+            return table;
+
+        // 收集所有电芯的Key并集（动态列）
+        var allKeys = ctx.CellBags.Values
+            .SelectMany(bag => bag.Keys)
+            .Distinct()
+            .OrderBy(k => k)
+            .ToList();
+
+        foreach (var key in allKeys)
+            table.Columns.Add(key, typeof(string));
+
+        // 填充行
+        foreach (var cell in ctx.CellBags)
+        {
+            var row = table.NewRow();
+            row["条码"] = cell.Key;
+
+            foreach (var kv in cell.Value)
+            {
+                if (table.Columns.Contains(kv.Key))
+                    row[kv.Key] = FormatValue(kv.Value);
+            }
+
+            table.Rows.Add(row);
+        }
+
+        return table;
     }
 
     private static string FormatValue(object? value)
     {
         return value switch
         {
-            null => "null",
+            null => "--",
             DateTime dt => dt.ToString("HH:mm:ss.fff"),
             bool b => b ? "OK" : "NG",
             double d => d.ToString("F3"),
-            _ => value.ToString() ?? ""
+            _ => value.ToString() ?? "--"
         };
     }
 }
 
 /// <summary>
-/// 单台设备的监控展示模型
+/// 单台PLC设备的Tab展示模型
 /// </summary>
-public class DeviceMonitorVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
+public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
 {
     public int DeviceId { get; set; }
 
@@ -108,6 +145,20 @@ public class DeviceMonitorVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
         set { _deviceName = value; OnPropertyChanged(); }
     }
 
+    private string _deviceDataSummary = "暂无数据";
+    public string DeviceDataSummary
+    {
+        get => _deviceDataSummary;
+        set { _deviceDataSummary = value; OnPropertyChanged(); }
+    }
+
+    private string _stepSummary = "暂无任务";
+    public string StepSummary
+    {
+        get => _stepSummary;
+        set { _stepSummary = value; OnPropertyChanged(); }
+    }
+
     private int _cellCount;
     public int CellCount
     {
@@ -115,31 +166,10 @@ public class DeviceMonitorVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
         set { _cellCount = value; OnPropertyChanged(); }
     }
 
-    public ObservableCollection<KeyValueVm> StepStates { get; } = new();
-    public ObservableCollection<KeyValueVm> DeviceData { get; } = new();
-    public ObservableCollection<CellMonitorVm> Cells { get; } = new();
-}
-
-/// <summary>
-/// 单个电芯的监控展示模型
-/// </summary>
-public class CellMonitorVm
-{
-    public string Barcode { get; set; } = "";
-    public ObservableCollection<KeyValueVm> Data { get; } = new();
-}
-
-/// <summary>
-/// 键值对展示模型
-/// </summary>
-public class KeyValueVm
-{
-    public string Key { get; set; }
-    public string Value { get; set; }
-
-    public KeyValueVm(string key, string value)
+    private DataTable? _cellTable;
+    public DataTable? CellTable
     {
-        Key = key;
-        Value = value;
+        get => _cellTable;
+        set { _cellTable = value; OnPropertyChanged(); }
     }
 }

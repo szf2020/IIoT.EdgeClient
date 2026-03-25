@@ -25,7 +25,9 @@ public class SignalInteraction : ISignalInteraction
     private readonly ushort _mergedWriteCount;
 
     private const int TaskLoopInterval = 10;
-    private const int ReconnectInterval = 1000;
+
+    // 【新增】：重试计数器
+    private int _retryCount = 0;
 
     // 断连日志频率控制
     private DateTime _lastDisconnectLogTime = DateTime.MinValue;
@@ -60,6 +62,16 @@ public class SignalInteraction : ISignalInteraction
             = TryMergeMappings(_readMappings);
         (_canMergeWrite, _mergedWriteAddress, _mergedWriteCount)
             = TryMergeMappings(_writeMappings);
+    }
+
+    /// <summary>
+    /// 【新增】智能分级退避算法：根据失败次数计算等待时间
+    /// </summary>
+    private int GetBackoffDelay()
+    {
+        if (_retryCount <= 3) return 50;         // 1-3次：快速抢救，50ms
+        if (_retryCount <= 10) return 2000;      // 4-10次：降频等待设备重启，2秒
+        return 5000;                             // 10次以上：设备大概率离线，5秒长轮询
     }
 
     /// <summary>
@@ -117,14 +129,26 @@ public class SignalInteraction : ISignalInteraction
         {
             _plcService.Init(_deviceConfig.IpAddress, _deviceConfig.Port1);
             var result = await _plcService.ConnectAsync();
-            if (!result)
+            if (result)
             {
+                // 连接成功，重置重试计数器和日志防刷屏时间
+                if (_retryCount > 0 || _lastDisconnectLogTime != DateTime.MinValue)
+                {
+                    _logger.Info($"[{_deviceConfig.DeviceName}] 连接/重连成功");
+                    _lastDisconnectLogTime = DateTime.MinValue;
+                    _retryCount = 0;
+                }
+            }
+            else
+            {
+                _retryCount++;
                 if (ShouldLogDisconnect())
-                    _logger.Warn($"[{_deviceConfig.DeviceName}] 连接失败，等待轮询重连");
+                    _logger.Warn($"[{_deviceConfig.DeviceName}] 连接失败，进入分级退避重连...");
             }
         }
         catch (Exception ex)
         {
+            _retryCount++;
             if (ShouldLogDisconnect())
                 _logger.Error($"[{_deviceConfig.DeviceName}] 连接异常: {ex.Message}");
         }
@@ -146,16 +170,20 @@ public class SignalInteraction : ISignalInteraction
             try
             {
                 await DoCoreAsync();
+
+                // 核心工作正常完成，休眠正常的时间 (10ms)
+                await Task.Delay(TaskLoopInterval, ct);
             }
             catch (Exception ex)
             {
+                _retryCount++;
                 if (ShouldLogDisconnect())
-                    _logger.Error(
-                        $"[{_deviceConfig.DeviceName}] 任务循环异常: {ex.Message}");
-                await Task.Delay(ReconnectInterval, ct);
-            }
+                    _logger.Error($"[{_deviceConfig.DeviceName}] 任务循环异常: {ex.Message}");
 
-            await Task.Delay(TaskLoopInterval, ct);
+                // 出现异常，使用分级退避时间
+                int delay = GetBackoffDelay();
+                await Task.Delay(delay, ct);
+            }
         }
     }
 
@@ -163,19 +191,16 @@ public class SignalInteraction : ISignalInteraction
     {
         if (!_plcService.IsConnected)
         {
-            if (ShouldLogDisconnect())
-                _logger.Warn($"[{_deviceConfig.DeviceName}] 连接断开，重连中...");
-
+            // 在这里尝试重连，ConnectAsync 内部已经处理了 _retryCount 和日志
             await ConnectAsync();
-            await Task.Delay(ReconnectInterval);
-            return;
-        }
 
-        // 重连成功，输出一条成功日志并重置计时器
-        if (_lastDisconnectLogTime != DateTime.MinValue)
-        {
-            _logger.Info($"[{_deviceConfig.DeviceName}] 重连成功");
-            _lastDisconnectLogTime = DateTime.MinValue;
+            // 如果连完依然没连上，应用分级退避延迟并直接返回
+            if (!_plcService.IsConnected)
+            {
+                int delay = GetBackoffDelay();
+                await Task.Delay(delay);
+                return;
+            }
         }
 
         IPlcBufferTransport? buffer = _dataStore.GetBuffer(_deviceConfig.Id);
@@ -210,10 +235,10 @@ public class SignalInteraction : ISignalInteraction
         catch (Exception ex)
         {
             if (ShouldLogDisconnect())
-                _logger.Error(
-                    $"[{_deviceConfig.DeviceName}] 读取异常: {ex.Message}");
+                _logger.Error($"[{_deviceConfig.DeviceName}] 读取异常: {ex.Message}");
             _plcService.Disconnect();
-            return;
+            // 主动断开后，抛出异常让外层 catch 捕获，从而进入退避延迟
+            throw new Exception("读取数据失败导致断开连接");
         }
 
         // ========== 写入 ==========
@@ -243,9 +268,9 @@ public class SignalInteraction : ISignalInteraction
         catch (Exception ex)
         {
             if (ShouldLogDisconnect())
-                _logger.Error(
-                    $"[{_deviceConfig.DeviceName}] 写入异常: {ex.Message}");
+                _logger.Error($"[{_deviceConfig.DeviceName}] 写入异常: {ex.Message}");
             _plcService.Disconnect();
+            throw new Exception("写入数据失败导致断开连接");
         }
     }
 }

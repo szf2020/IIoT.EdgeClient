@@ -23,6 +23,8 @@ namespace IIoT.Edge.Module.Production
                 typeof(DataViewPage), typeof(DataViewWidget));
             registry.RegisterRoute("Production.CapacityView",
                 typeof(CapacityViewPage), typeof(CapacityViewWidget));
+            registry.RegisterRoute("Production.Monitor",
+                typeof(MonitorViewPage), typeof(MonitorWidget));
 
             registry.RegisterAnchorable(
                 new AnchorableInfo
@@ -34,18 +36,6 @@ namespace IIoT.Edge.Module.Production
                 },
                 typeof(EquipmentView),
                 typeof(EquipmentWidget));
-
-            // 实时数据监控面板
-            registry.RegisterAnchorable(
-                new AnchorableInfo
-                {
-                    Title = "实时数据监控",
-                    ContentId = "Core.Monitor",
-                    InitialPosition = AnchorablePosition.Right,
-                    IsVisible = true
-                },
-                typeof(MonitorView),
-                typeof(MonitorWidget));
 
             registry.RegisterMenu(new MenuInfo
             {
@@ -61,6 +51,14 @@ namespace IIoT.Edge.Module.Production
                 WidgetId = "Production.CapacityView",
                 Icon = "ChartLine",
                 Order = 2,
+                RequiredPermission = ""
+            });
+            registry.RegisterMenu(new MenuInfo
+            {
+                Title = "实时监控",
+                WidgetId = "Production.Monitor",
+                Icon = "MonitorDashboard",
+                Order = 3,
                 RequiredPermission = ""
             });
         }

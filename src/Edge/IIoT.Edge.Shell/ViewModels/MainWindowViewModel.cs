@@ -1,7 +1,6 @@
 // 路径：src/Edge/IIoT.Edge.Shell/ViewModels/MainWindowViewModel.cs
 using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Module.Production.Equipment;
-using IIoT.Edge.Module.Production.Monitor;
 using IIoT.Edge.Module.SysLog;
 using IIoT.Edge.UI.Shared.Modularity;
 using IIoT.Edge.UI.Shared.Widgets.Footer;
@@ -22,7 +21,6 @@ public class MainWindowViewModel : BaseNotifyPropertyChanged
     public FooterWidget FooterViewModel { get; }
     public LogWidget LogViewModel { get; }
     public EquipmentWidget EquipmentViewModel { get; }
-    public MonitorWidget MonitorViewModel { get; }
 
     public FrameworkElement? CurrentView => _navigationService.CurrentView;
 
@@ -33,7 +31,6 @@ public class MainWindowViewModel : BaseNotifyPropertyChanged
         FooterWidget footerWidget,
         LogWidget logWidget,
         EquipmentWidget equipmentWidget,
-        MonitorWidget monitorWidget,
         INavigationService navigationService)
     {
         HeaderViewModel = headerWidget;
@@ -42,7 +39,6 @@ public class MainWindowViewModel : BaseNotifyPropertyChanged
         FooterViewModel = footerWidget;
         LogViewModel = logWidget;
         EquipmentViewModel = equipmentWidget;
-        MonitorViewModel = monitorWidget;
 
         _navigationService = navigationService;
         _navigationService.Navigated += _ => OnPropertyChanged(nameof(CurrentView));
