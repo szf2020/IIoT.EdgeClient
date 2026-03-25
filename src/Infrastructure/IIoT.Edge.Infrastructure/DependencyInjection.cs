@@ -1,8 +1,6 @@
 ﻿using IIoT.Edge.Common.Repository;
 using IIoT.Edge.Contracts.Cache;
-using IIoT.Edge.Contracts.Config;
 using IIoT.Edge.Infrastructure.Cache;
-using IIoT.Edge.Infrastructure.Config.Services;
 using IIoT.Edge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,11 +27,6 @@ public static class DependencyInjection
         services.AddSingleton<IEdgeCacheService,
             EdgeCacheService>();
 
-        // 参数配置服务
-        services.AddSingleton<ISystemConfigService,
-            SystemConfigService>();
-        services.AddSingleton<IDeviceParamService,
-            DeviceParamService>();
 
         return services;
     }

@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
+    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Dapper/IIoT.Edge.Infrastructure.Dapper.csproj" Id="f888b62f-8635-42cf-b2b4-fb605267ba78" />
     <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure/IIoT.Edge.Infrastructure.csproj" Id="3fbdae2b-de52-43d5-ac49-4271b8819af2" />
     <Project Path="src/Infrastructure/IIoT.Edge.PlcDevice/IIoT.Edge.PlcDevice.csproj" Id="78ef5b00-1ea0-475d-9e2f-8318f8ea0819" />
   </Folder>
@@ -25,6 +26,7 @@
   </Folder>
   <Folder Name="/src/Tasks/">
     <Project Path="src/Tasks/IIoT.Edge.Task.Scan/IIoT.Edge.Tasks.Scan.csproj" Id="1b084c68-6e45-466a-8a98-438cf08eac27" />
+    <Project Path="src/Tasks/IIoT.Edge.Tasks.DataPipeline/IIoT.Edge.Tasks.DataPipeline.csproj" Id="d87f2998-d7cc-4f4b-a518-095f3a84f3d5" />
     <Project Path="src/Tasks/IIoT.Edge.Tasks/IIoT.Edge.Tasks.csproj" Id="0af2fc95-d944-481f-89e1-897ba043a59d" />
   </Folder>
 </Solution>

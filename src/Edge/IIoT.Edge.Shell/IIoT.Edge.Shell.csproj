@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.CloudSync\IIoT.Edge.CloudSync.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Dapper\IIoT.Edge.Infrastructure.Dapper.csproj" />
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure\IIoT.Edge.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.PlcDevice\IIoT.Edge.PlcDevice.csproj" />
     <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Config\IIoT.Edge.Module.Config.csproj" />
@@ -29,6 +30,8 @@
     <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Production\IIoT.Edge.Module.Production.csproj" />
     <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.SysLog\IIoT.Edge.Module.SysLog.csproj" />
     <ProjectReference Include="..\..\Shared\IIoT.Edge.UI.Shared\IIoT.Edge.UI.Shared.csproj" />
+    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Task.Scan\IIoT.Edge.Tasks.Scan.csproj" />
+    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks.DataPipeline\IIoT.Edge.Tasks.DataPipeline.csproj" />
   </ItemGroup>
 
   <ItemGroup>

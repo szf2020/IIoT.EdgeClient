@@ -1,11 +1,15 @@
 ﻿using AutoMapper;
 using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Common.Repository;
-using IIoT.Edge.Contracts.Config;
 using IIoT.Edge.Domain.Config.Aggregates;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 using IIoT.Edge.Module.Config.ParamView.Models;
+using IIoT.Edge.Module.Config.UseCases.DeviceParam.Commands;
+using IIoT.Edge.Module.Config.UseCases.DeviceParam.Queries;
+using IIoT.Edge.Module.Config.UseCases.SystemConfig.Commands;
+using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using IIoT.Edge.UI.Shared.PluginSystem;
+using MediatR;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -16,8 +20,7 @@ public class ParamViewWidget : WidgetBase
     public override string WidgetId => "Config.ParamView";
     public override string WidgetName => "参数配置";
 
-    private readonly ISystemConfigService _sysConfigService;
-    private readonly IDeviceParamService _deviceParamService;
+    private readonly ISender _sender;
     private readonly IReadRepository<NetworkDeviceEntity> _networkDevices;
     private readonly IMapper _mapper;
 
@@ -50,13 +53,11 @@ public class ParamViewWidget : WidgetBase
     public ICommand DeleteDeviceParamCommand { get; }
 
     public ParamViewWidget(
-        ISystemConfigService sysConfigService,
-        IDeviceParamService deviceParamService,
+        ISender sender,
         IReadRepository<NetworkDeviceEntity> networkDevices,
         IMapper mapper)
     {
-        _sysConfigService = sysConfigService;
-        _deviceParamService = deviceParamService;
+        _sender = sender;
         _networkDevices = networkDevices;
         _mapper = mapper;
 
@@ -82,11 +83,16 @@ public class ParamViewWidget : WidgetBase
 
     private async Task LoadGeneralParamsAsync()
     {
-        var list = await _sysConfigService.GetAllAsync();
+        var result = await _sender.Send(new GetAllSystemConfigsQuery());
+
         GeneralParams.Clear();
-        foreach (var vm in list.OrderBy(x => x.SortOrder)
-            .Select(e => _mapper.Map<GeneralParamVm>(e)))
-            GeneralParams.Add(vm);
+        if (result.IsSuccess && result.Value != null)
+        {
+            foreach (var vm in result.Value
+                .OrderBy(x => x.SortOrder)
+                .Select(e => _mapper.Map<GeneralParamVm>(e)))
+                GeneralParams.Add(vm);
+        }
     }
 
     private async Task LoadDeviceGroupsAsync()
@@ -106,12 +112,16 @@ public class ParamViewWidget : WidgetBase
 
     private async Task LoadDeviceParamsAsync(DeviceParamGroupVm group)
     {
-        var list = await _deviceParamService
-            .GetByDeviceAsync(group.DeviceId);
+        var result = await _sender.Send(new GetDeviceParamsQuery(group.DeviceId));
+
         group.Params.Clear();
-        foreach (var vm in list.OrderBy(x => x.SortOrder)
-            .Select(e => _mapper.Map<DeviceParamVm>(e)))
-            group.Params.Add(vm);
+        if (result.IsSuccess && result.Value != null)
+        {
+            foreach (var vm in result.Value
+                .OrderBy(x => x.SortOrder)
+                .Select(e => _mapper.Map<DeviceParamVm>(e)))
+                group.Params.Add(vm);
+        }
     }
 
     private void OnDeleteGeneralParam(object? param)
@@ -128,41 +138,22 @@ public class ParamViewWidget : WidgetBase
 
     private async Task SaveAsync()
     {
-        // 通用参数：手动组装 Entity（调用公开的有参构造函数）
-        var sysEntities = GeneralParams
-            .Select((vm, idx) =>
-            {
-                var e = new SystemConfigEntity(
-                    key: vm.Name,
-                    value: vm.Value,
-                    description: vm.Description);
+        // 通用参数：ViewModel → DTO
+        var sysConfigs = GeneralParams
+            .Select(vm => new SystemConfigDto(vm.Name, vm.Value, vm.Description))
+            .ToList();
 
-                e.SortOrder = idx + 1;
-                return e;
-            }).ToList();
+        await _sender.Send(new SaveSystemConfigsCommand(sysConfigs));
 
-        await _sysConfigService.SaveAsync(sysEntities);
-
-        // 设备参数：手动组装 Entity（通过上下文 SelectedGroup 拿到 DeviceId 并传入构造函数）
+        // 设备参数：ViewModel → DTO
         if (SelectedGroup != null)
         {
-            var deviceEntities = SelectedGroup.Params
-                .Select((vm, idx) =>
-                {
-                    var e = new DeviceParamEntity(
-                        networkDeviceId: SelectedGroup.DeviceId,
-                        name: vm.Name,
-                        value: vm.Value,
-                        unit: vm.Unit);
+            var deviceParams = SelectedGroup.Params
+                .Select(vm => new DeviceParamDto(vm.Name, vm.Value, vm.Unit, vm.Min, vm.Max))
+                .ToList();
 
-                    e.MinValue = vm.Min;
-                    e.MaxValue = vm.Max;
-                    e.SortOrder = idx + 1;
-                    return e;
-                }).ToList();
-
-            await _deviceParamService.SaveAsync(
-                SelectedGroup.DeviceId, deviceEntities);
+            await _sender.Send(new SaveDeviceParamsCommand(
+                SelectedGroup.DeviceId, deviceParams));
         }
 
         // 重新加载

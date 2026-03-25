@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MediatR" Version="14.1.0" />
+    <ProjectReference Include="..\..\Shared\IIoT.Edge.Contracts\IIoT.Edge.Contracts.csproj" />
+    <ProjectReference Include="..\IIoT.Edge.Tasks\IIoT.Edge.Tasks.csproj" />
   </ItemGroup>
 
 </Project>

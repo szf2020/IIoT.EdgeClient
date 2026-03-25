@@ -1,17 +1,11 @@
 // 路径：src/Edge/IIoT.Edge.Shell/App.xaml.cs
-using IIoT.Edge.CloudSync;
 using IIoT.Edge.Infrastructure;
-using IIoT.Edge.PlcDevice;
-using IIoT.Edge.Module.Hardware;
-using IIoT.Edge.Module.Production;
-using IIoT.Edge.Module.Config;
-using IIoT.Edge.Module.Formula;
-using IIoT.Edge.Module.SysLog;
+using IIoT.Edge.Infrastructure.Dapper;
+using IIoT.Edge.Module.Hardware.Plc;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.Tasks.Context;
-using IIoT.Edge.UI.Shared;
+using IIoT.Edge.Tasks.DataPipeline;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.Module.Hardware.Plc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
@@ -39,53 +33,21 @@ namespace IIoT.Edge.Shell
                 .AddJsonFile("appsettings.json", optional: false)
                 .Build();
 
-            var services = new ServiceCollection();
-            var viewRegistry = new ViewRegistry();
+            // 1. DI 注册
+            var services = ConfigureServices(configuration);
 
-            // 1. 模块扫描
-            var machineModule = configuration["MachineModule"];
-            IModuleLoader loader = new ModuleLoader(services, viewRegistry);
-            loader.LoadFromDirectory(
-                AppDomain.CurrentDomain.BaseDirectory, machineModule);
-
-            // 2. 各层 DI — 每层自己的扩展方法，App只调不写
-            var dbPath = Path.Combine(
-                Environment.GetFolderPath(
-                    Environment.SpecialFolder.ApplicationData),
-                "IIoT.Edge", "edge.db");
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-
-            services.AddInfrastructure(dbPath);
-            services.AddCloudSync(configuration);
-            services.AddPlcDevice();
-            services.AddShellWidgets();
-            services.AddShell(viewRegistry);
-            services.AddHardwareModule();
-            services.AddProductionModule();
-            services.AddConfigModule();
-            services.AddFormulaModule();
-            services.AddSysLogModule();
-
-            // 3. 构建容器
+            // 2. 构建容器
             ServiceProvider = services.BuildServiceProvider();
-            ServiceProvider.ApplyMigrations();
 
-            // 4. 恢复生产上下文
-            var contextStore = ServiceProvider.GetRequiredService<ProductionContextStore>();
-            contextStore.LoadFromFile();
+            // 3. 初始化数据库和运行时状态
+            InitializeInfrastructure();
 
-            // 5. 启动自动保存
-            _ = contextStore.StartAutoSaveAsync(_appCts.Token, intervalSeconds: 30);
-
-            // 6. 启动主窗体
+            // 4. 启动主窗体
             var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             mainWindow.Show();
 
-            // 7. 异步设备寻址
-            _ = IdentifyDeviceAsync();
-
-            // 8. PLC任务初始化（注册逻辑在DependencyInjection里）
-            _ = ServiceProvider.InitializePlcTasksAsync(_appCts.Token);
+            // 5. 启动后台服务
+            StartBackgroundServices();
         }
 
         protected override void OnExit(ExitEventArgs e)
@@ -99,6 +61,76 @@ namespace IIoT.Edge.Shell
             plcManager.Dispose();
 
             base.OnExit(e);
+        }
+
+        /// <summary>
+        /// 配置所有 DI 注册
+        /// </summary>
+        private ServiceCollection ConfigureServices(IConfiguration configuration)
+        {
+            var services = new ServiceCollection();
+            var viewRegistry = new ViewRegistry();
+
+            // 模块扫描
+            var machineModule = configuration["MachineModule"];
+            IModuleLoader loader = new ModuleLoader(services, viewRegistry);
+            loader.LoadFromDirectory(
+                AppDomain.CurrentDomain.BaseDirectory, machineModule);
+
+            // 数据存储路径统一配置
+            var dbDir = GetDbDirectory();
+
+            // 各层注册（全部走 DependencyInjection 扩展方法）
+            services.AddShell(viewRegistry, configuration, dbDir);
+
+            return services;
+        }
+
+        /// <summary>
+        /// 初始化数据库和运行时状态
+        /// </summary>
+        private void InitializeInfrastructure()
+        {
+            // EF Core Migration
+            ServiceProvider.ApplyMigrations();
+
+            // Dapper 建表
+            _ = ServiceProvider.InitializeDapperTablesAsync();
+
+            // 恢复生产上下文
+            var contextStore = ServiceProvider.GetRequiredService<ProductionContextStore>();
+            contextStore.LoadFromFile();
+        }
+
+        /// <summary>
+        /// 启动所有后台服务
+        /// </summary>
+        private void StartBackgroundServices()
+        {
+            // 上下文自动保存
+            var contextStore = ServiceProvider.GetRequiredService<ProductionContextStore>();
+            _ = contextStore.StartAutoSaveAsync(_appCts.Token, intervalSeconds: 30);
+
+            // 设备寻址
+            _ = IdentifyDeviceAsync();
+
+            // PLC 任务
+            _ = ServiceProvider.InitializePlcTasksAsync(_appCts.Token);
+
+            // 数据管道（队列消费 + 重传）
+            _ = ServiceProvider.StartDataPipelineAsync(_appCts.Token);
+        }
+
+        /// <summary>
+        /// 统一数据库目录（所有 .db 文件集中存放）
+        /// </summary>
+        private static string GetDbDirectory()
+        {
+            var dbDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "IIoT.Edge", "db");
+            Directory.CreateDirectory(dbDir);
+            return dbDir;
         }
 
         private async Task IdentifyDeviceAsync()
