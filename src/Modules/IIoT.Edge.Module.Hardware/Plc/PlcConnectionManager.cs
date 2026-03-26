@@ -201,6 +201,7 @@ public class PlcConnectionManager : IDisposable
 
         foreach (var cts in _deviceCtsMap.Values)
         {
+            if (cts is null) continue;
             cts.Cancel();
             cts.Dispose();
         }

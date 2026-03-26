@@ -1,20 +1,11 @@
 ﻿using IIoT.Edge.Common.Messaging;
 using IIoT.Edge.Common.Repository;
 using IIoT.Edge.Common.Result;
+using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 
 namespace IIoT.Edge.Module.Hardware.UseCases.IoMapping.Queries;
 
-public record IoMappingPagedDto(
-    List<IoMappingEntity> Items,
-    int TotalCount
-);
-
-public record GetIoMappingsByDeviceQuery(
-    int NetworkDeviceId,
-    int PageIndex,
-    int PageSize
-) : IQuery<Result<IoMappingPagedDto>>;
 
 public class GetIoMappingsByDeviceHandler(
     IReadRepository<IoMappingEntity> repo

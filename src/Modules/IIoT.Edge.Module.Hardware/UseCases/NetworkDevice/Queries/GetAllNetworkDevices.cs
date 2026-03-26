@@ -1,11 +1,11 @@
 ﻿using IIoT.Edge.Common.Messaging;
 using IIoT.Edge.Common.Repository;
 using IIoT.Edge.Common.Result;
+using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 
 namespace IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Queries;
 
-public record GetAllNetworkDevicesQuery() : IQuery<Result<List<NetworkDeviceEntity>>>;
 
 public class GetAllNetworkDevicesHandler(
     IReadRepository<NetworkDeviceEntity> repo

@@ -2,13 +2,11 @@
 using IIoT.Edge.Common.Enums;
 using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Contracts.Auth;
+using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Module.Hardware.HardwareConfigView.Models;
 using IIoT.Edge.Module.Hardware.UseCases.IoMapping.Commands;
-using IIoT.Edge.Module.Hardware.UseCases.IoMapping.Queries;
 using IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Commands;
-using IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Queries;
 using IIoT.Edge.Module.Hardware.UseCases.SerialDevice.Commands;
-using IIoT.Edge.Module.Hardware.UseCases.SerialDevice.Queries;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using MediatR;
 using System.Collections.ObjectModel;
@@ -97,8 +95,6 @@ public class HardwareConfigWidget : WidgetBase
         IoNextPageCommand = new AsyncCommand(() => IoNextPageAsync());
         IoPrevPageCommand = new BaseCommand(_ => IoPrevPage(), _ => IoPageIndex > 0);
         SaveCommand = new AsyncCommand(SaveAsync);
-
-        _ = LoadAllAsync();
     }
 
     private async Task LoadAllAsync()
@@ -223,4 +219,12 @@ public class HardwareConfigWidget : WidgetBase
         // 重新加载
         await LoadAllAsync();
     }
+
+    public override async Task OnActivatedAsync()
+    {
+        await LoadAllAsync();
+    }
+
+
+
 }

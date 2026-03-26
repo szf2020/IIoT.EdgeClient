@@ -80,6 +80,10 @@ public class NavigationService : INavigationService
         // 3. 切换当前视图
         CurrentWidget = widget;
         CurrentView = view;
+
+        // 4. 通知 Widget 被激活，重新加载数据
+        _ = widget.OnActivatedAsync();
+
         Navigated?.Invoke(CurrentWidget);
     }
 

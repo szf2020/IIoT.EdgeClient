@@ -1,8 +1,7 @@
-﻿using IIoT.Edge.Contracts.DataPipeline;
-using IIoT.Edge.Infrastructure.Dapper.Connection;
+﻿using IIoT.Edge.Infrastructure.Dapper.Connection;
 using IIoT.Edge.Infrastructure.Dapper.Repository;
-using IIoT.Edge.Infrastructure.Dapper.Stores;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace IIoT.Edge.Infrastructure.Dapper;
 
@@ -11,36 +10,52 @@ public static class DependencyInjection
     /// <summary>
     /// 注册 Dapper 基础设施
     /// 
-    /// 在 App.xaml.cs 中调用：
-    ///   var dapperDbDir = Path.Combine(appDataDir, "IIoT.Edge", "db");
-    ///   services.AddDapperInfrastructure(dapperDbDir);
+    /// 自动扫描当前程序集中所有继承 DapperRepositoryBase 的 Store
+    /// 自动注册为：具体类 + 接口 + ITableInitializer
+    /// 新增 Store 只需要写类和接口，不用改这里
     /// </summary>
     public static IServiceCollection AddDapperInfrastructure(
         this IServiceCollection services,
         string dbDirectory)
     {
-        // 连接工厂（单例）
+        // 连接工厂
         services.AddSingleton(new SqliteConnectionFactory(dbDirectory));
 
-        // Store 注册（单例）
-        // 同时注册为 IFailedRecordStore（业务层用）和 ITableInitializer（建表用）
-        services.AddSingleton<FailedRecordStore>();
-        services.AddSingleton<IFailedRecordStore>(sp => sp.GetRequiredService<FailedRecordStore>());
-        services.AddSingleton<ITableInitializer>(sp => sp.GetRequiredService<FailedRecordStore>());
+        // 自动扫描注册所有 Store
+        var assembly = Assembly.GetExecutingAssembly();
+        var storeTypes = assembly.GetTypes()
+            .Where(t => !t.IsAbstract
+                && t.BaseType is { IsGenericType: true }
+                && t.BaseType.GetGenericTypeDefinition() == typeof(DapperRepositoryBase<>))
+            .ToList();
 
-        // 将来新增的 Store 在这里追加，格式一样：
-        // services.AddSingleton<LogQueueStore>();
-        // services.AddSingleton<ILogQueueStore>(sp => sp.GetRequiredService<LogQueueStore>());
-        // services.AddSingleton<ITableInitializer>(sp => sp.GetRequiredService<LogQueueStore>());
+        foreach (var storeType in storeTypes)
+        {
+            // 注册具体类（单例）
+            services.AddSingleton(storeType);
+
+            // 注册 ITableInitializer（建表用）
+            services.AddSingleton<ITableInitializer>(sp =>
+                (ITableInitializer)sp.GetRequiredService(storeType));
+
+            // 扫描该类实现的业务接口（排除 ITableInitializer）
+            var interfaces = storeType.GetInterfaces()
+                .Where(i => i != typeof(ITableInitializer)
+                    && !i.IsGenericType
+                    && i.Assembly != typeof(ITableInitializer).Assembly)
+                .ToList();
+
+            foreach (var iface in interfaces)
+            {
+                services.AddSingleton(iface, sp => sp.GetRequiredService(storeType));
+            }
+        }
 
         return services;
     }
 
     /// <summary>
     /// 容器构建后调用：初始化所有已注册的表
-    /// 
-    /// 在 App.xaml.cs 中，BuildServiceProvider 之后调用：
-    ///   await ServiceProvider.InitializeDapperTablesAsync();
     /// </summary>
     public static async Task InitializeDapperTablesAsync(
         this IServiceProvider serviceProvider)
@@ -48,7 +63,6 @@ public static class DependencyInjection
         var factory = serviceProvider.GetRequiredService<SqliteConnectionFactory>();
         var initializers = serviceProvider.GetServices<ITableInitializer>();
 
-        // 按 DbName 分组，同一个 db 文件只开一次连接
         var groups = initializers.GroupBy(x => x.DbName);
 
         foreach (var group in groups)

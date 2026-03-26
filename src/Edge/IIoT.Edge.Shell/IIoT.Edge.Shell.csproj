@@ -22,6 +22,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.CloudSync\IIoT.Edge.CloudSync.csproj" />
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Dapper\IIoT.Edge.Infrastructure.Dapper.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Excel\IIoT.Edge.Infrastructure.Excel.csproj" />
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure\IIoT.Edge.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.PlcDevice\IIoT.Edge.PlcDevice.csproj" />
     <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Config\IIoT.Edge.Module.Config.csproj" />

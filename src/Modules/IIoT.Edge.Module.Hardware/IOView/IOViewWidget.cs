@@ -1,8 +1,9 @@
 ﻿using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Common.Repository;
+using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Contracts.Plc.Store;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 using IIoT.Edge.UI.Shared.PluginSystem;
+using MediatR;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -15,13 +16,10 @@ public class IOViewWidget : WidgetBase
     public override string WidgetName => "IO交互";
 
     private readonly IPlcDataStore _dataStore;
-    private readonly IReadRepository<NetworkDeviceEntity> _networkDevices;
-    private readonly IReadRepository<IoMappingEntity> _ioMappings;
+    private readonly ISender _sender;
     private readonly DispatcherTimer _refreshTimer;
 
-    // ── 设备选择 ──
-    public ObservableCollection<NetworkDeviceEntity> Devices { get; }
-        = new();
+    public ObservableCollection<NetworkDeviceEntity> Devices { get; } = new();
 
     private NetworkDeviceEntity? _selectedDevice;
     public NetworkDeviceEntity? SelectedDevice
@@ -35,13 +33,9 @@ public class IOViewWidget : WidgetBase
         }
     }
 
-    // ── IO信号列表 ──
-    public ObservableCollection<IoSignalVm> ReadSignals { get; }
-        = new();
-    public ObservableCollection<IoSignalVm> WriteSignals { get; }
-        = new();
+    public ObservableCollection<IoSignalVm> ReadSignals { get; } = new();
+    public ObservableCollection<IoSignalVm> WriteSignals { get; } = new();
 
-    // ── 连接状态 ──
     private bool _isConnected;
     public bool IsConnected
     {
@@ -61,36 +55,33 @@ public class IOViewWidget : WidgetBase
 
     public IOViewWidget(
         IPlcDataStore dataStore,
-        IReadRepository<NetworkDeviceEntity> networkDevices,
-        IReadRepository<IoMappingEntity> ioMappings)
+        ISender sender)
     {
         _dataStore = dataStore;
-        _networkDevices = networkDevices;
-        _ioMappings = ioMappings;
+        _sender = sender;
 
         WriteCommand = new BaseCommand(ExecuteWrite);
-        RefreshDevicesCommand =
-            new AsyncCommand(LoadDevicesAsync);
+        RefreshDevicesCommand = new AsyncCommand(LoadDevicesAsync);
 
-        // 200ms 刷新一次读缓冲区
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(200)
         };
         _refreshTimer.Tick += OnRefreshTick;
         _refreshTimer.Start();
-
-        _ = LoadDevicesAsync();
+   
     }
 
     private async Task LoadDevicesAsync()
     {
-        var devices = await _networkDevices.GetListAsync(
-            x => x.IsEnabled, CancellationToken.None);
+        var result = await _sender.Send(new GetAllNetworkDevicesQuery());
 
         Devices.Clear();
-        foreach (var d in devices)
-            Devices.Add(d);
+        if (result.IsSuccess && result.Value != null)
+        {
+            foreach (var d in result.Value.Where(x => x.IsEnabled))
+                Devices.Add(d);
+        }
 
         if (Devices.Count > 0 && SelectedDevice is null)
             SelectedDevice = Devices[0];
@@ -103,12 +94,13 @@ public class IOViewWidget : WidgetBase
 
         if (SelectedDevice is null) return;
 
-        var mappings = await _ioMappings.GetListAsync(
-            x => x.NetworkDeviceId == SelectedDevice.Id,
-            CancellationToken.None);
+        var result = await _sender.Send(new GetIoMappingsByDeviceQuery(
+            SelectedDevice.Id, 0, int.MaxValue));
+
+        if (!result.IsSuccess || result.Value is null) return;
 
         int readIdx = 0, writeIdx = 0;
-        foreach (var m in mappings.OrderBy(x => x.SortOrder))
+        foreach (var m in result.Value.Items)
         {
             for (int i = 0; i < m.AddressCount; i++)
             {
@@ -170,9 +162,13 @@ public class IOViewWidget : WidgetBase
             return;
         }
 
-        var hasBuffer =
-            _dataStore.HasDevice(SelectedDevice.Id);
+        var hasBuffer = _dataStore.HasDevice(SelectedDevice.Id);
         IsConnected = hasBuffer;
         StatusText = hasBuffer ? "已连接" : "未连接";
     }
+    public override async Task OnActivatedAsync()
+    {
+        await LoadDevicesAsync();
+    }
+
 }

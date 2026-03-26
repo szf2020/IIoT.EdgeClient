@@ -5,15 +5,19 @@
     /// </summary>
     public interface IEdgeWidget
     {
-        string WidgetId { get; }      // 插件唯一标识
-        string WidgetName { get; }    // 插件显示名称
+        string WidgetId { get; }
+        string WidgetName { get; }
 
-        // 云端驱动的布局元数据
         int LayoutRow { get; set; }
-
         int LayoutColumn { get; set; }
         int RowSpan { get; set; }
         int ColumnSpan { get; set; }
         bool IsVisible { get; set; }
+
+        /// <summary>
+        /// 页面被导航到时调用（每次切换页面都会触发）
+        /// Widget 在此方法中重新加载最新数据
+        /// </summary>
+        Task OnActivatedAsync();
     }
 }

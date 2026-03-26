@@ -23,7 +23,8 @@ using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
-
+using IIoT.Edge.Contracts.Hardware.Queries;
+using IIoT.Edge.Infrastructure.Excel;
 namespace IIoT.Edge.Shell;
 
 public static class DependencyInjection
@@ -41,8 +42,12 @@ public static class DependencyInjection
         var efDbPath = Path.Combine(dbDir, "edge.db");
 
         // ── 基础设施层 ──────────────────────────────
+        var excelDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "IIoT.Edge", "excel");
         services.AddInfrastructure(efDbPath);
         services.AddDapperInfrastructure(dbDir);
+        services.AddExcelInfrastructure(excelDir);
         services.AddCloudSync(configuration);
         services.AddPlcDevice();
 
@@ -51,13 +56,15 @@ public static class DependencyInjection
         services.AddDataPipeline();
 
         // ── MediatR ─────────────────────────────────
+        // ── MediatR ─────────────────────────────────
         services.AddMediatR(cfg =>
         {
-            cfg.LicenseKey = "eyJhbGci...（省略）";
+            cfg.LicenseKey = "eyJhbGciOiJSUzI1NiIsImtpZCI6Ikx1Y2t5UGVubnlTb2Z0d2FyZUxpY2Vuc2VLZXkvYmJiMTNhY2I1OTkwNGQ4OWI0Y2IxYzg1ZjA4OGNjZjkiLCJ0eXAiOiJKV1QifQ.eyJpc3MiOiJodHRwczovL2x1Y2t5cGVubnlzb2Z0d2FyZS5jb20iLCJhdWQiOiJMdWNreVBlbm55U29mdHdhcmUiLCJleHAiOiIxODA0MTE4NDAwIiwiaWF0IjoiMTc3MjYwOTI4MCIsImFjY291bnRfaWQiOiIwMTljYjdiYTA0NGM3Y2FjYTcyZDNhMWQ3YjRlYzZjNiIsImN1c3RvbWVyX2lkIjoiY3RtXzAxa2p2dnk2ZjFjdjM1bmF3NzNmNGZ0MTE4Iiwic3ViX2lkIjoiLSIsImVkaXRpb24iOiIwIiwidHlwZSI6IjIifQ.vuSHJIt34rSumtJdD5ZI6gorKQmaD5Msk28ucJr2GIPFR1TsOqtyvdMydzyN5nFIEv_EeGNOu_LfTHTCDz2G-Vu9atS1h7xhIoQqNT8PvuLPHEHrf90YjOKEe4rxjohth1fC2SqpkvrJ0VzEPWQNsy5lvoLOZmzw2WAHa6NBy5bc4R9tQNwOUUbxLSwhmnyOo6K1Td87CBXEjAveGrXuSwhNE0NnQWuTs1ptcK40tfkq3T3Bigh2NO-QDiGuipxoS5AQIkO6n-wLjuhFW1078IEeyh9wct2l7s8htWNQLIlmRvFFJPiN2m1-cI60ds4SYfr4FA4pM6DSNXIMDMeGyA";
             cfg.RegisterServicesFromAssemblies(
-                typeof(IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries.GetAllSystemConfigsQuery).Assembly,
-                typeof(IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Queries.GetAllNetworkDevicesQuery).Assembly
-            );
+     typeof(IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries.GetAllSystemConfigsHandler).Assembly,
+     typeof(IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Queries.GetAllNetworkDevicesHandler).Assembly,
+     typeof(IIoT.Edge.Module.Production.EventHandlers.CellCompletedEventHandler).Assembly
+ );
         });
 
         // ── UI 层 ───────────────────────────────────

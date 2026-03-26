@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Common.Repository;
+using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Domain.Config.Aggregates;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 using IIoT.Edge.Module.Config.ParamView.Models;
@@ -71,8 +72,6 @@ public class ParamViewWidget : WidgetBase
                 SelectedGroup.Params.Add(new DeviceParamVm());
         });
         DeleteDeviceParamCommand = new BaseCommand(OnDeleteDeviceParam);
-
-        _ = InitAsync();
     }
 
     private async Task InitAsync()
@@ -97,15 +96,19 @@ public class ParamViewWidget : WidgetBase
 
     private async Task LoadDeviceGroupsAsync()
     {
-        var devices = await _networkDevices.GetListAsync(
-            x => x.IsEnabled, CancellationToken.None);
+        var result = await _sender.Send(new GetAllNetworkDevicesQuery());
         DeviceParamGroups.Clear();
-        foreach (var d in devices)
-            DeviceParamGroups.Add(new DeviceParamGroupVm
-            {
-                DeviceId = d.Id,
-                DeviceName = $"{d.DeviceName} ({d.IpAddress})"
-            });
+
+        if (result.IsSuccess && result.Value != null)
+        {
+            foreach (var d in result.Value.Where(x => x.IsEnabled))
+                DeviceParamGroups.Add(new DeviceParamGroupVm
+                {
+                    DeviceId = d.Id,
+                    DeviceName = $"{d.DeviceName} ({d.IpAddress})"
+                });
+        }
+
         if (DeviceParamGroups.Count > 0)
             SelectedGroup = DeviceParamGroups[0];
     }
@@ -135,7 +138,10 @@ public class ParamViewWidget : WidgetBase
         if (param is DeviceParamVm vm && SelectedGroup != null)
             SelectedGroup.Params.Remove(vm);
     }
-
+    public override async Task OnActivatedAsync()
+    {
+        await InitAsync();
+    }
     private async Task SaveAsync()
     {
         // 通用参数：ViewModel → DTO
