@@ -25,6 +25,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Infrastructure.Excel;
+using IIoT.Edge.DataMapping;
 namespace IIoT.Edge.Shell;
 
 public static class DependencyInjection
@@ -50,7 +51,7 @@ public static class DependencyInjection
         services.AddExcelInfrastructure(excelDir);
         services.AddCloudSync(configuration);
         services.AddPlcDevice();
-
+        services.AddDataMapping();
         // ── Tasks 层 ────────────────────────────────
         services.AddEdgeTasks();
         services.AddDataPipeline();

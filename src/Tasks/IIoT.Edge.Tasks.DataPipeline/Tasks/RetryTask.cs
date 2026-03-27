@@ -6,7 +6,7 @@ using IIoT.Edge.Tasks.Base;
 namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 
 /// <summary>
-/// 重传队列任务（对应老项目的补传逻辑）
+/// 重传队列任务
 /// 
 /// 定时从 SQLite 捞出失败记录，从 FailedTarget 那一步开始继续消费
 /// 之前已成功的步骤不重复执行
@@ -127,7 +127,9 @@ public class RetryTask : ScheduledTaskBase
             Barcode = record.Barcode,
             LocalDeviceId = record.LocalDeviceId,
             DeviceName = record.DeviceName,
-            CloudDeviceCode = record.CloudDeviceCode,
+            CloudDeviceId = string.IsNullOrEmpty(record.CloudDeviceId)
+                ? null
+                : Guid.Parse(record.CloudDeviceId),
             CellResult = record.CellResult,
             DataJson = record.DataJson,
             CompletedTime = record.CompletedTime

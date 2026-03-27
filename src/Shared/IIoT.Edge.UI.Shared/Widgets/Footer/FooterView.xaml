@@ -13,13 +13,15 @@
         <Grid Margin="16,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!--  左侧：设备编号  -->
+            <!--  左侧：设备名称  -->
             <StackPanel
                 Grid.Column="0"
                 VerticalAlignment="Center"
@@ -35,14 +37,34 @@
                     VerticalAlignment="Center"
                     FontSize="11"
                     Foreground="#52525B">
-                    <Run Text="设备号：" />
-                    <Run Foreground="#A1A1AA" Text="{Binding DeviceCode, Mode=OneWay}" />
+                    <Run Text="设备：" />
+                    <Run Foreground="#A1A1AA" Text="{Binding DeviceName, Mode=OneWay}" />
+                </TextBlock>
+            </StackPanel>
+
+            <!--  左侧：云端连接状态  -->
+            <StackPanel
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Orientation="Horizontal">
+                <Ellipse
+                    Width="8"
+                    Height="8"
+                    VerticalAlignment="Center"
+                    Fill="{Binding CloudStatusColor, Mode=OneWay}" />
+                <TextBlock
+                    Margin="5,0,0,0"
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    Foreground="#52525B">
+                    <Run Text="云端：" />
+                    <Run Foreground="#A1A1AA" Text="{Binding CloudStatus, Mode=OneWay}" />
                 </TextBlock>
             </StackPanel>
 
             <!--  中间：运行时长  -->
             <StackPanel
-                Grid.Column="2"
+                Grid.Column="4"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Orientation="Horizontal">
@@ -64,7 +86,7 @@
 
             <!--  右侧：实时时钟  -->
             <StackPanel
-                Grid.Column="4"
+                Grid.Column="6"
                 VerticalAlignment="Center"
                 Orientation="Horizontal">
                 <materialDesign:PackIcon

@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
+    <Project Path="src/Infrastructure/IIoT.Edge.DataMapping/IIoT.Edge.DataMapping.csproj" Id="26244124-df47-4905-9d4d-5e75a1d691f5" />
     <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Dapper/IIoT.Edge.Infrastructure.Dapper.csproj" Id="f888b62f-8635-42cf-b2b4-fb605267ba78" />
     <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Excel/IIoT.Edge.Infrastructure.Excel.csproj" Id="6365f64f-3b5d-481f-99c3-6f41b1d611ef" />
     <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure/IIoT.Edge.Infrastructure.csproj" Id="3fbdae2b-de52-43d5-ac49-4271b8819af2" />

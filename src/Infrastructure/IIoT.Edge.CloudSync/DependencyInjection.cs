@@ -1,7 +1,9 @@
 ﻿using IIoT.Edge.CloudSync.Auth;
 using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.CloudSync.Device;
+using IIoT.Edge.CloudSync.PassStation;
 using IIoT.Edge.Contracts.Auth;
+using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.Device;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,24 +17,38 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         var baseUrl = configuration["CloudApi:BaseUrl"] ?? "http://10.98.90.154:81";
+        var timeout = TimeSpan.FromSeconds(3);
 
+        // ── 本地紧急登录配置 ────────────────────────────────────
         var localAdminConfig = new LocalAdminConfig();
         configuration.GetSection("LocalAdmin").Bind(localAdminConfig);
         services.AddSingleton(localAdminConfig);
 
+        // ── 人员认证（独立 HttpClient，管 UI 权限） ─────────────
         services.AddHttpClient<AuthService>(client =>
         {
             client.BaseAddress = new Uri(baseUrl);
-            client.Timeout = TimeSpan.FromSeconds(10);
+            client.Timeout = timeout;
         });
         services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
 
+        // ── 设备心跳寻址（独立 HttpClient，3秒超时快速响应） ────
         services.AddHttpClient<DeviceService>(client =>
         {
             client.BaseAddress = new Uri(baseUrl);
-            client.Timeout = TimeSpan.FromSeconds(3);
+            client.Timeout = timeout;
         });
         services.AddSingleton<IDeviceService>(sp => sp.GetRequiredService<DeviceService>());
+
+        // ── 云端数据上报（Named HttpClient，供消费者使用） ───────
+        services.AddHttpClient("CloudApi", client =>
+        {
+            client.BaseAddress = new Uri(baseUrl);
+            client.Timeout = timeout;
+        });
+
+        // ── 云端过站数据上报消费者 ─────────────────────────────
+        services.AddSingleton<ICloudConsumer, CloudConsumer>();
 
         return services;
     }

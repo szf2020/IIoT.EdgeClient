@@ -1,148 +1,257 @@
-﻿// 路径：src/Infrastructure/IIoT.Edge.CloudSync/Device/DeviceService.cs
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Net.NetworkInformation;
+using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Device;
 
-namespace IIoT.Edge.CloudSync.Device
+namespace IIoT.Edge.CloudSync.Device;
+
+/// <summary>
+/// 设备服务实现
+/// 
+/// 核心职责：
+///   1. 读取本机 MAC 地址作为唯一标识
+///   2. 心跳循环：定时调云端寻址接口探测网络状态
+///   3. 维护 Online / Offline 状态，切换时发布事件
+///   4. 本地文件缓存 DeviceSession，断网时可用
+/// 
+/// 心跳策略：
+///   Online  → 5 分钟一次
+///   Offline → 30 秒一次
+/// </summary>
+public class DeviceService : IDeviceService
 {
-    public class DeviceService : IDeviceService
+    private readonly HttpClient _httpClient;
+    private readonly ILogService _logger;
+    private readonly object _stateLock = new();
+
+    private CancellationTokenSource? _cts;
+    private Task? _heartbeatTask;
+
+    private static readonly TimeSpan OnlineInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan OfflineInterval = TimeSpan.FromSeconds(30);
+
+    private static readonly string CacheFile =
+        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "device_cache.json");
+
+    public DeviceSession? CurrentDevice { get; private set; }
+    public NetworkState CurrentState { get; private set; } = NetworkState.Offline;
+    public bool HasDeviceId => CurrentDevice is not null;
+
+    public event Action<NetworkState>? NetworkStateChanged;
+    public event Action<DeviceSession?>? DeviceIdentified;
+
+    public DeviceService(HttpClient httpClient, ILogService logger)
     {
-        private readonly HttpClient _httpClient;
+        _httpClient = httpClient;
+        _logger = logger;
+    }
 
-        public DeviceSession? CurrentDevice { get; private set; }
-        public bool IsIdentified => CurrentDevice is not null;
+    // ── 启动 / 停止 ─────────────────────────────────────────────
 
-        public event Action<DeviceSession?>? DeviceIdentified;
+    public Task StartAsync(CancellationToken ct)
+    {
+        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token), _cts.Token);
+        return Task.CompletedTask;
+    }
 
-        public DeviceService(HttpClient httpClient)
+    public async Task StopAsync()
+    {
+        if (_cts is not null)
         {
-            _httpClient = httpClient;
+            await _cts.CancelAsync();
+
+            if (_heartbeatTask is not null)
+            {
+                try { await _heartbeatTask; }
+                catch (OperationCanceledException) { }
+            }
+
+            _cts.Dispose();
+            _cts = null;
         }
+    }
 
-        public async Task<bool> IdentifyAsync()
+    // ── 心跳循环 ─────────────────────────────────────────────────
+
+    private async Task HeartbeatLoopAsync(CancellationToken ct)
+    {
+        _logger.Info("[DeviceService] 心跳循环启动");
+
+        // 启动时立即执行一次寻址
+        await IdentifyOnceAsync();
+
+        while (!ct.IsCancellationRequested)
         {
-            var mac = GetMacAddress();
-            System.Diagnostics.Debug.WriteLine($"[DeviceService] 本机MAC: {mac}");
+            var interval = CurrentState == NetworkState.Online
+                ? OnlineInterval
+                : OfflineInterval;
 
             try
             {
-                var response = await _httpClient
-                    .GetAsync($"/api/v1/Device/mac/{mac}")
-                    .ConfigureAwait(false);
+                await Task.Delay(interval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        $"[DeviceService] 云端寻址失败: {response.StatusCode}");
-                    return TryLoadFromCache(mac);
-                }
+            await IdentifyOnceAsync();
+        }
 
-                var dto = await response.Content
-                    .ReadFromJsonAsync<DeviceResponseDto>()
-                    .ConfigureAwait(false);
+        _logger.Info("[DeviceService] 心跳循环停止");
+    }
 
-                if (dto is null)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                        "[DeviceService] 云端返回数据为空");
-                    return TryLoadFromCache(mac);
-                }
+    // ── 单次寻址 ─────────────────────────────────────────────────
 
-                var session = new DeviceSession
-                {
-                    DeviceId = dto.Id,
-                    DeviceCode = dto.DeviceCode,
-                    DeviceName = dto.DeviceName,
-                    MacAddress = mac,
-                    ProcessId = dto.ProcessId
-                };
+    private async Task IdentifyOnceAsync()
+    {
+        var mac = GetMacAddress();
 
-                CurrentDevice = session;
+        try
+        {
+            var response = await _httpClient
+                .GetAsync($"/api/v1/Device/mac/{mac}")
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.Warn($"[DeviceService] 云端寻址失败: {response.StatusCode}");
+                GoOffline(mac);
+                return;
+            }
+
+            var dto = await response.Content
+                .ReadFromJsonAsync<DeviceResponseDto>()
+                .ConfigureAwait(false);
+
+            if (dto is null)
+            {
+                _logger.Warn("[DeviceService] 云端返回数据为空");
+                GoOffline(mac);
+                return;
+            }
+
+            var session = new DeviceSession
+            {
+                DeviceId = dto.Id,
+                DeviceName = dto.DeviceName,
+                MacAddress = mac,
+                ProcessId = dto.ProcessId
+            };
+
+            GoOnline(session);
+        }
+        catch (TaskCanceledException)
+        {
+            _logger.Warn("[DeviceService] 云端寻址超时");
+            GoOffline(mac);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.Warn($"[DeviceService] 网络异常: {ex.Message}");
+            GoOffline(mac);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"[DeviceService] 寻址异常: {ex.Message}");
+            GoOffline(mac);
+        }
+    }
+
+    // ── 状态切换 ─────────────────────────────────────────────────
+
+    private void GoOnline(DeviceSession session)
+    {
+        lock (_stateLock)
+        {
+            var deviceChanged = CurrentDevice is null
+                || CurrentDevice.DeviceId != session.DeviceId
+                || CurrentDevice.DeviceName != session.DeviceName
+                || CurrentDevice.ProcessId != session.ProcessId;
+
+            CurrentDevice = session;
+            SaveToCache(session);
+
+            if (deviceChanged)
+            {
+                _logger.Info($"[DeviceService] 设备信息更新: {session.DeviceName} ({session.MacAddress})");
                 DeviceIdentified?.Invoke(CurrentDevice);
-
-                // 写入本地缓存
-                SaveToCache(session);
-
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DeviceService] 寻址成功: {session.DeviceCode}");
-                return true;
             }
-            catch (TaskCanceledException)
+
+            if (CurrentState != NetworkState.Online)
             {
-                // 3秒超时
-                System.Diagnostics.Debug.WriteLine(
-                    "[DeviceService] 云端寻址超时（3秒），尝试读取本地缓存");
-                return TryLoadFromCache(mac);
-            }
-            catch (HttpRequestException ex)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DeviceService] 网络异常: {ex.Message}，尝试读取本地缓存");
-                return TryLoadFromCache(mac);
+                CurrentState = NetworkState.Online;
+                _logger.Info("[DeviceService] 状态切换 → Online");
+                NetworkStateChanged?.Invoke(NetworkState.Online);
             }
         }
+    }
 
-        // ── 读取本机 MAC 地址 ─────────────────────────────────────────
-        private static string GetMacAddress()
+    private void GoOffline(string mac)
+    {
+        lock (_stateLock)
         {
-            return NetworkInterface
-                .GetAllNetworkInterfaces()
-                .Where(nic => nic.OperationalStatus == OperationalStatus.Up
-                              && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .Select(nic => nic.GetPhysicalAddress().ToString())
-                .FirstOrDefault() ?? "000000000000";
-        }
-
-        // ── 本地缓存（简单文件缓存，后期可换 SQLite） ─────────────────
-        private static readonly string CacheFile =
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "device_cache.json");
-
-        private void SaveToCache(DeviceSession session)
-        {
-            try
+            // 首次离线且没有 DeviceSession，尝试读缓存
+            if (CurrentDevice is null)
             {
-                var json = System.Text.Json.JsonSerializer.Serialize(session);
-                File.WriteAllText(CacheFile, json);
+                TryLoadFromCache(mac);
             }
-            catch (Exception ex)
+
+            if (CurrentState != NetworkState.Offline)
             {
-                System.Diagnostics.Debug.WriteLine($"[DeviceService] 缓存写入失败: {ex.Message}");
+                CurrentState = NetworkState.Offline;
+                _logger.Info("[DeviceService] 状态切换 → Offline");
+                NetworkStateChanged?.Invoke(NetworkState.Offline);
             }
         }
+    }
 
-        private bool TryLoadFromCache(string mac)
+    // ── MAC 地址 ─────────────────────────────────────────────────
+
+    private static string GetMacAddress()
+    {
+        return NetworkInterface
+            .GetAllNetworkInterfaces()
+            .Where(nic => nic.OperationalStatus == OperationalStatus.Up
+                          && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Select(nic => nic.GetPhysicalAddress().ToString())
+            .FirstOrDefault() ?? "000000000000";
+    }
+
+    // ── 本地缓存 ─────────────────────────────────────────────────
+
+    private void SaveToCache(DeviceSession session)
+    {
+        try
         {
-            try
-            {
-                if (!File.Exists(CacheFile)) return false;
-
-                var json = File.ReadAllText(CacheFile);
-                var session = System.Text.Json.JsonSerializer.Deserialize<DeviceSession>(json);
-
-                if (session is null) return false;
-
-                // 用缓存数据，标记为离线模式
-                CurrentDevice = session with { MacAddress = mac };
-                DeviceIdentified?.Invoke(CurrentDevice);
-
-                System.Diagnostics.Debug.WriteLine(
-                    $"[DeviceService] 使用本地缓存: {session.DeviceCode}（离线模式）");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[DeviceService] 缓存读取失败: {ex.Message}");
-                return false;
-            }
+            var json = System.Text.Json.JsonSerializer.Serialize(session);
+            File.WriteAllText(CacheFile, json);
         }
-
-        // ── 云端返回的 DTO ────────────────────────────────────────────
-        private sealed class DeviceResponseDto
+        catch (Exception ex)
         {
-            public Guid Id { get; set; }
-            public string DeviceCode { get; set; } = string.Empty;
-            public string DeviceName { get; set; } = string.Empty;
-            public Guid ProcessId { get; set; }
+            _logger.Warn($"[DeviceService] 缓存写入失败: {ex.Message}");
+        }
+    }
+
+    private void TryLoadFromCache(string mac)
+    {
+        try
+        {
+            if (!File.Exists(CacheFile)) return;
+
+            var json = File.ReadAllText(CacheFile);
+            var session = System.Text.Json.JsonSerializer.Deserialize<DeviceSession>(json);
+            if (session is null) return;
+
+            // 用缓存数据，MAC 用当前本机的
+            CurrentDevice = session with { MacAddress = mac };
+            _logger.Info($"[DeviceService] 加载本地缓存: {session.DeviceName}");
+            DeviceIdentified?.Invoke(CurrentDevice);
+        }
+        catch (Exception ex)
+        {
+            _logger.Warn($"[DeviceService] 缓存读取失败: {ex.Message}");
         }
     }
 }

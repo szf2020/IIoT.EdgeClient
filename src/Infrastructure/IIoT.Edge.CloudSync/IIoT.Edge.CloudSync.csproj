@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\IIoT.Edge.Contracts\IIoT.Edge.Contracts.csproj" />
+    <ProjectReference Include="..\IIoT.Edge.DataMapping\IIoT.Edge.DataMapping.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.5" />

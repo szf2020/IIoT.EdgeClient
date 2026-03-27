@@ -18,6 +18,9 @@ public static class DependencyInjection
         services.AddSingleton<IUiNotifyConsumer, UiNotifyConsumer>();
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<IUiNotifyConsumer>());
 
+        // 云端上报消费者（实现在 CloudSync 层注册，这里桥接到消费链）
+        services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICloudConsumer>());
+
         // 后台任务
         services.AddSingleton<ProcessQueueTask>();
         services.AddSingleton<RetryTask>();

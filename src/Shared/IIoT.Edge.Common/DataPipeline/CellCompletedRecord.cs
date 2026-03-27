@@ -24,9 +24,10 @@ public class CellCompletedRecord
     public string DeviceName { get; set; } = string.Empty;
 
     /// <summary>
-    /// 云端设备编码（寻址成功后才有，离线时为空）
+    /// 云端设备ID（寻址成功后才有，未寻址时为 null）
+    /// 数据上报时携带，对应云端 ReceiveInjectionPassCommand.DeviceId
     /// </summary>
-    public string? CloudDeviceCode { get; set; }
+    public Guid? CloudDeviceId { get; set; }
 
     /// <summary>
     /// 电芯综合结果（true=OK, false=NG）

@@ -15,7 +15,12 @@ public class FailedCellRecord
     public string Barcode { get; set; } = string.Empty;
     public int LocalDeviceId { get; set; }
     public string DeviceName { get; set; } = string.Empty;
-    public string? CloudDeviceCode { get; set; }
+
+    /// <summary>
+    /// 云端设备ID（Guid 字符串存储，未寻址时为 null）
+    /// </summary>
+    public string? CloudDeviceId { get; set; }
+
     public bool CellResult { get; set; }
     public string DataJson { get; set; } = string.Empty;
     public DateTime CompletedTime { get; set; }
