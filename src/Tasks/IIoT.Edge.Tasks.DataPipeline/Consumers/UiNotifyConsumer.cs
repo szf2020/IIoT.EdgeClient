@@ -36,13 +36,15 @@ public class UiNotifyConsumer : IUiNotifyConsumer
     {
         try
         {
+            var cellData = record.CellData;
+
             // 1. 存产能记录
             var capacityRecord = new CapacityRecord
             {
-                Barcode = record.Barcode,
-                CellResult = record.CellResult,
-                ShiftCode = GetShiftCode(record.CompletedTime),
-                CompletedTime = record.CompletedTime,
+                Barcode = cellData.DisplayLabel,
+                CellResult = cellData.CellResult ?? false,
+                ShiftCode = cellData.ShiftCode ?? GetShiftCode(cellData.CompletedTime ?? DateTime.Now),
+                CompletedTime = cellData.CompletedTime ?? DateTime.Now,
                 CreatedAt = DateTime.Now
             };
 
@@ -51,23 +53,25 @@ public class UiNotifyConsumer : IUiNotifyConsumer
             // 2. 发布事件通知 UI
             await _publisher.Publish(new CellCompletedEvent(record));
 
-            _logger.Info($"[{record.DeviceName}] 产能已记录+UI已通知，条码: {record.Barcode}" +
-                $"（{(record.CellResult ? "OK" : "NG")}，班次: {capacityRecord.ShiftCode}）");
+            var result = cellData.CellResult switch
+            {
+                true => "OK",
+                false => "NG",
+                _ => "未判定"
+            };
+
+            _logger.Info($"[UI] 产能已记录，{cellData.DisplayLabel}" +
+                $"（{result}，班次: {capacityRecord.ShiftCode}）");
 
             return true;
         }
         catch (Exception ex)
         {
-            _logger.Error($"[{record.DeviceName}] UI通知/产能记录失败，条码: {record.Barcode}，{ex.Message}");
+            _logger.Error($"[UI] 产能记录/通知失败，{record.CellData.DisplayLabel}，{ex.Message}");
             return false;
         }
     }
 
-    /// <summary>
-    /// 根据时间判断班次
-    /// 白班：08:00 ~ 20:00
-    /// 夜班：20:00 ~ 次日 08:00
-    /// </summary>
     private static string GetShiftCode(DateTime time)
     {
         var hour = time.Hour;

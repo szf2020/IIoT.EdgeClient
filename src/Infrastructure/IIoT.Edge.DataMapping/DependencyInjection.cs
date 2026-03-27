@@ -1,5 +1,4 @@
-﻿using IIoT.Edge.DataMapping.Cloud;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace IIoT.Edge.DataMapping;
 
@@ -7,11 +6,8 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddDataMapping(this IServiceCollection services)
     {
-        // ── 云端映射器 ─────────────────────────────────────────
-        services.AddSingleton<InjectionCloudMapper>();
-
-        // ── MES 映射器（后面做） ───────────────────────────────
-        // services.AddSingleton<InjectionMesMapper>();
+        // AutoMapper Profile 在 Shell 层统一扫描注册
+        // 这里预留后续 MES 映射器等注册位置
 
         return services;
     }

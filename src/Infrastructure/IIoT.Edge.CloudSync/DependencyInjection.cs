@@ -24,7 +24,7 @@ public static class DependencyInjection
         configuration.GetSection("LocalAdmin").Bind(localAdminConfig);
         services.AddSingleton(localAdminConfig);
 
-        // ── 人员认证（独立 HttpClient，管 UI 权限） ─────────────
+        // ── 人员认证 ───────────────────────────────────────────
         services.AddHttpClient<AuthService>(client =>
         {
             client.BaseAddress = new Uri(baseUrl);
@@ -32,7 +32,7 @@ public static class DependencyInjection
         });
         services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
 
-        // ── 设备心跳寻址（独立 HttpClient，3秒超时快速响应） ────
+        // ── 设备心跳寻址 ───────────────────────────────────────
         services.AddHttpClient<DeviceService>(client =>
         {
             client.BaseAddress = new Uri(baseUrl);
@@ -40,14 +40,14 @@ public static class DependencyInjection
         });
         services.AddSingleton<IDeviceService>(sp => sp.GetRequiredService<DeviceService>());
 
-        // ── 云端数据上报（Named HttpClient，供消费者使用） ───────
+        // ── 云端数据上报 HttpClient ────────────────────────────
         services.AddHttpClient("CloudApi", client =>
         {
             client.BaseAddress = new Uri(baseUrl);
             client.Timeout = timeout;
         });
 
-        // ── 云端过站数据上报消费者 ─────────────────────────────
+        // ── 云端上报消费者 ─────────────────────────────────────
         services.AddSingleton<ICloudConsumer, CloudConsumer>();
 
         return services;

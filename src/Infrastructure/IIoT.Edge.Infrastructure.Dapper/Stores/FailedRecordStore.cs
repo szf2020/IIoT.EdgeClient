@@ -1,9 +1,11 @@
 ﻿using Dapper;
 using IIoT.Edge.Common.DataPipeline;
+using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Infrastructure.Dapper.Connection;
 using IIoT.Edge.Infrastructure.Dapper.Repository;
+using System.Text.Json;
 
 namespace IIoT.Edge.Infrastructure.Dapper.Stores;
 
@@ -15,19 +17,19 @@ namespace IIoT.Edge.Infrastructure.Dapper.Stores;
 /// </summary>
 public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailedRecordStore
 {
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public override string DbName => "pipeline";
     protected override string TableName => "failed_cell_records";
 
     protected override string CreateTableSql => @"
         CREATE TABLE IF NOT EXISTS failed_cell_records (
             Id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            Barcode         TEXT    NOT NULL,
-            LocalDeviceId   INTEGER NOT NULL,
-            DeviceName      TEXT    NOT NULL,
-            CloudDeviceId   TEXT,
-            CellResult      INTEGER NOT NULL,
-            DataJson        TEXT    NOT NULL,
-            CompletedTime   TEXT    NOT NULL,
+            ProcessType     TEXT    NOT NULL,
+            CellDataJson    TEXT    NOT NULL,
             FailedTarget    TEXT    NOT NULL,
             ErrorMessage    TEXT    NOT NULL,
             RetryCount      INTEGER NOT NULL DEFAULT 0,
@@ -37,9 +39,6 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
 
         CREATE INDEX IF NOT EXISTS idx_failed_next_retry
             ON failed_cell_records (NextRetryTime);
-
-        CREATE INDEX IF NOT EXISTS idx_failed_barcode
-            ON failed_cell_records (Barcode);
     ";
 
     public FailedRecordStore(
@@ -57,25 +56,21 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
         string failedTarget,
         string errorMessage)
     {
+        var cellData = record.CellData;
+        var cellDataJson = JsonSerializer.Serialize(cellData, cellData.GetType(), _jsonOptions);
+
         const string sql = @"
             INSERT INTO failed_cell_records
-                (Barcode, LocalDeviceId, DeviceName, CloudDeviceId,
-                 CellResult, DataJson, CompletedTime,
-                 FailedTarget, ErrorMessage, RetryCount, NextRetryTime, CreatedAt)
+                (ProcessType, CellDataJson, FailedTarget, ErrorMessage,
+                 RetryCount, NextRetryTime, CreatedAt)
             VALUES
-                (@Barcode, @LocalDeviceId, @DeviceName, @CloudDeviceId,
-                 @CellResult, @DataJson, @CompletedTime,
-                 @FailedTarget, @ErrorMessage, 0, @NextRetryTime, @CreatedAt)";
+                (@ProcessType, @CellDataJson, @FailedTarget, @ErrorMessage,
+                 0, @NextRetryTime, @CreatedAt)";
 
         await SafeExecuteAsync(sql, new
         {
-            record.Barcode,
-            record.LocalDeviceId,
-            record.DeviceName,
-            CloudDeviceId = record.CloudDeviceId?.ToString(),
-            record.CellResult,
-            record.DataJson,
-            CompletedTime = record.CompletedTime.ToString("O"),
+            ProcessType = cellData.ProcessType,
+            CellDataJson = cellDataJson,
             FailedTarget = failedTarget,
             ErrorMessage = errorMessage,
             NextRetryTime = DateTime.Now.AddSeconds(30).ToString("O"),
@@ -148,7 +143,6 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
 
     /// <summary>
     /// 重置所有 Abandoned 记录为可重试
-    /// 将超过最大重试次数（NextRetryTime = DateTime.MaxValue）的记录重置
     /// </summary>
     public async Task ResetAllAbandonedAsync()
     {
@@ -164,6 +158,4 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
             MaxTime = DateTime.MaxValue.ToString("O")
         });
     }
-
-
 }

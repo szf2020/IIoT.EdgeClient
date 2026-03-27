@@ -7,14 +7,13 @@ using IIoT.Edge.Tasks.DataPipeline.Services;
 namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 
 /// <summary>
-/// 主队列消费任务（对应老项目 ProcessQueueWorkTask）
+/// 主队列消费任务
 /// 
 /// 从内存队列中取出电芯数据，按消费者注册顺序严格串行执行：
-///   MES上报 → 云端上报 → Excel写入 → UI通知 → 记产能
+///   Cloud上报 → Excel写入 → UI通知
 /// 
-/// 任何一个消费者失败 → 记录失败信息 → 存入 SQLite 重传队列
-/// 
-/// 全局任务，不绑定特定设备（所有设备的电芯数据汇入同一个队列）
+/// 任何一个消费者失败 → 存入 SQLite 重传队列
+/// 全局任务，不绑定特定设备
 /// </summary>
 public class ProcessQueueTask : ScheduledTaskBase
 {
@@ -24,9 +23,6 @@ public class ProcessQueueTask : ScheduledTaskBase
 
     public override string TaskName => "ProcessQueueTask";
 
-    /// <summary>
-    /// 队列消费间隔 50ms（与老项目一致）
-    /// </summary>
     protected override int ExecuteInterval => 50;
 
     public ProcessQueueTask(
@@ -46,7 +42,8 @@ public class ProcessQueueTask : ScheduledTaskBase
         if (!_pipelineService.Queue.TryDequeue(out var record))
             return;
 
-        Logger.Info($"[{record.DeviceName}] 开始处理条码: {record.Barcode}");
+        var label = record.CellData.DisplayLabel;
+        Logger.Info($"[{record.CellData.ProcessType}] 开始处理: {label}");
 
         foreach (var consumer in _consumers)
         {
@@ -56,8 +53,8 @@ public class ProcessQueueTask : ScheduledTaskBase
 
                 if (!success)
                 {
-                    Logger.Warn($"[{record.DeviceName}] {consumer.Name} 处理失败" +
-                        $"，条码: {record.Barcode}，转入重传队列");
+                    Logger.Warn($"[{record.CellData.ProcessType}] {consumer.Name} 处理失败" +
+                        $"，{label}，转入重传队列");
 
                     await SaveToRetryAsync(record, consumer.Name, "消费者返回失败");
                     return;
@@ -65,15 +62,15 @@ public class ProcessQueueTask : ScheduledTaskBase
             }
             catch (Exception ex)
             {
-                Logger.Error($"[{record.DeviceName}] {consumer.Name} 处理异常" +
-                    $"，条码: {record.Barcode}，{ex.Message}");
+                Logger.Error($"[{record.CellData.ProcessType}] {consumer.Name} 处理异常" +
+                    $"，{label}，{ex.Message}");
 
                 await SaveToRetryAsync(record, consumer.Name, ex.Message);
                 return;
             }
         }
 
-        Logger.Info($"[{record.DeviceName}] 条码: {record.Barcode} 全部消费完成");
+        Logger.Info($"[{record.CellData.ProcessType}] {label} 全部消费完成");
     }
 
     private async Task SaveToRetryAsync(
@@ -87,8 +84,8 @@ public class ProcessQueueTask : ScheduledTaskBase
         }
         catch (Exception ex)
         {
-            Logger.Error($"[{record.DeviceName}] 写入重传队列失败！" +
-                $"条码: {record.Barcode}，{ex.Message}");
+            Logger.Error($"[{record.CellData.ProcessType}] 写入重传队列失败！" +
+                $"{record.CellData.DisplayLabel}，{ex.Message}");
         }
     }
 }

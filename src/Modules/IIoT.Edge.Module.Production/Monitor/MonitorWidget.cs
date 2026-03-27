@@ -1,8 +1,9 @@
-﻿// 路径：src/Modules/IIoT.Edge.Module.Production/Monitor/MonitorWidget.cs
+﻿using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Tasks.Context;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Reflection;
 using System.Windows.Threading;
 
 namespace IIoT.Edge.Module.Production.Monitor;
@@ -15,9 +16,6 @@ public class MonitorWidget : WidgetBase
     private readonly ProductionContextStore _contextStore;
     private readonly DispatcherTimer _refreshTimer;
 
-    /// <summary>
-    /// 所有PLC设备Tab列表
-    /// </summary>
     public ObservableCollection<DeviceTabVm> DeviceTabs { get; } = new();
 
     private int _selectedTabIndex;
@@ -43,7 +41,6 @@ public class MonitorWidget : WidgetBase
     {
         var contexts = _contextStore.GetAll();
 
-        // 增删设备Tab
         var currentIds = contexts.Select(c => c.DeviceId).ToHashSet();
         var removeList = DeviceTabs.Where(d => !currentIds.Contains(d.DeviceId)).ToList();
         foreach (var item in removeList)
@@ -60,56 +57,51 @@ public class MonitorWidget : WidgetBase
 
             tab.DeviceName = ctx.DeviceName;
 
-            // 设备级数据摘要
             var deviceInfo = string.Join("  ",
                 ctx.DeviceBag.OrderBy(kv => kv.Key)
                     .Select(kv => $"{kv.Key}={FormatValue(kv.Value)}"));
             tab.DeviceDataSummary = string.IsNullOrEmpty(deviceInfo) ? "暂无数据" : deviceInfo;
 
-            // 状态机摘要
             var stepInfo = string.Join("  ",
                 ctx.StepStates.Select(kv => $"{kv.Key}={kv.Value}"));
             tab.StepSummary = string.IsNullOrEmpty(stepInfo) ? "暂无任务" : stepInfo;
 
-            // 电芯数据 → DataTable（动态列）
-            tab.CellCount = ctx.CellBags.Count;
+            tab.CellCount = ctx.CurrentCells.Count;
             tab.CellTable = BuildCellTable(ctx);
         }
     }
 
     /// <summary>
-    /// 从 CellBags 构建 DataTable，行=电芯条码，列=所有Key的并集
+    /// 从 CurrentCells 构建 DataTable
+    /// 强类型属性自动变成列，不用再手动收集 key
     /// </summary>
     private static DataTable BuildCellTable(ProductionContext ctx)
     {
         var table = new DataTable();
 
-        // 第一列固定：条码
-        table.Columns.Add("条码", typeof(string));
-
-        if (ctx.CellBags.Count == 0)
+        if (ctx.CurrentCells.Count == 0)
             return table;
 
-        // 收集所有电芯的Key并集（动态列）
-        var allKeys = ctx.CellBags.Values
-            .SelectMany(bag => bag.Keys)
-            .Distinct()
-            .OrderBy(k => k)
+        // 取第一颗电芯的类型，用反射获取所有属性作为列
+        var firstCell = ctx.CurrentCells.Values.First();
+        var properties = firstCell.GetType()
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.Name != nameof(CellDataBase.ProcessType)
+                     && p.Name != nameof(CellDataBase.DisplayLabel))
             .ToList();
 
-        foreach (var key in allKeys)
-            table.Columns.Add(key, typeof(string));
+        foreach (var prop in properties)
+            table.Columns.Add(prop.Name, typeof(string));
 
         // 填充行
-        foreach (var cell in ctx.CellBags)
+        foreach (var cell in ctx.CurrentCells.Values)
         {
             var row = table.NewRow();
-            row["条码"] = cell.Key;
 
-            foreach (var kv in cell.Value)
+            foreach (var prop in properties)
             {
-                if (table.Columns.Contains(kv.Key))
-                    row[kv.Key] = FormatValue(kv.Value);
+                var value = prop.GetValue(cell);
+                row[prop.Name] = FormatValue(value);
             }
 
             table.Rows.Add(row);
@@ -131,9 +123,6 @@ public class MonitorWidget : WidgetBase
     }
 }
 
-/// <summary>
-/// 单台PLC设备的Tab展示模型
-/// </summary>
 public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
 {
     public int DeviceId { get; set; }

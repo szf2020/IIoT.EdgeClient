@@ -1,16 +1,19 @@
-﻿// 路径：src/Infrastructure/IIoT.Edge.Tasks/Context/ProductionContext.cs
-using System.Collections.Concurrent;
+﻿using IIoT.Edge.Common.DataPipeline.CellData;
 
 namespace IIoT.Edge.Tasks.Context;
 
 /// <summary>
-/// 单台设备的生产运行时上下文（通用数据容器）
+/// 单台设备的生产运行时上下文（全局对象，可被任意 Task 访问）
 /// 
 /// 两层数据结构：
-/// 1. DeviceBag — 设备级数据（工单号、状态机步骤等，不属于某个电芯）
-/// 2. CellBags — 电芯级数据（按条码隔离，每个电芯一个独立的数据空间）
+/// 1. DeviceBag  — 设备级数据（工单号、状态机步骤等，不属于某个电芯）
+/// 2. CurrentCells — 电芯级数据（按条码隔离，强类型对象，断点直接可看）
 /// 
-/// 电芯流转完成后从 CellBags 移除，只保留当前在制品
+/// 电芯流转完成后从 CurrentCells 移除，只保留当前在制品
+/// 
+/// 调试体验：
+///   断点展开 CurrentCells 即可看到每颗电芯的完整强类型数据
+///   不需要翻 Dictionary，不需要记 key 名
 /// </summary>
 public class ProductionContext
 {
@@ -35,18 +38,17 @@ public class ProductionContext
     public Dictionary<string, object> DeviceBag { get; set; } = new();
 
     /// <summary>
-    /// 电芯级数据（key=条码, value=该电芯的所有参数）
-    /// 条码是电芯的唯一标识，所有任务按条码写入各自的数据
+    /// 当前在制电芯（key=条码, value=强类型电芯数据）
+    /// 断点展开即可看到每颗电芯的完整数据
     /// </summary>
-    public Dictionary<string, Dictionary<string, object>> CellBags { get; set; } = new();
+    public Dictionary<string, CellDataBase> CurrentCells { get; set; } = new();
 
     /// <summary>
     /// 数据变更事件（UI绑定刷新用）
-    /// 参数：(变更类型, key, value)
     /// </summary>
     public event Action<string, string, object?>? DataChanged;
 
-    // ── 状态机步骤 ─────────────────────────────────────
+    // ── 状态机步骤 ─────────────────────────────────────────
 
     public int GetStep(string taskName)
         => StepStates.TryGetValue(taskName, out var step) ? step : 0;
@@ -57,7 +59,7 @@ public class ProductionContext
         DataChanged?.Invoke("Step", taskName, step);
     }
 
-    // ── 设备级数据存取 ─────────────────────────────────
+    // ── 设备级数据存取 ─────────────────────────────────────
 
     public void Set<T>(string key, T value)
     {
@@ -71,74 +73,60 @@ public class ProductionContext
     public bool Has(string key)
         => DeviceBag.ContainsKey(key);
 
-    public bool Remove(string key)
+    public bool RemoveDeviceData(string key)
         => DeviceBag.Remove(key);
 
-    // ── 电芯级数据存取 ─────────────────────────────────
+    // ── 电芯操作 ───────────────────────────────────────────
 
     /// <summary>
-    /// 创建电芯数据空间（扫码任务扫到新条码时调用）
+    /// 添加一颗电芯到上下文（流程状态机创建强类型对象后调用）
     /// </summary>
-    public void CreateCell(string barcode)
+    public void AddCell(string barcode, CellDataBase cellData)
     {
-        if (!CellBags.ContainsKey(barcode))
-        {
-            CellBags[barcode] = new Dictionary<string, object>();
-            DataChanged?.Invoke("CellCreated", barcode, null);
-        }
+        CurrentCells[barcode] = cellData;
+        DataChanged?.Invoke("CellAdded", barcode, cellData);
     }
 
     /// <summary>
-    /// 往指定条码的电芯写入数据
+    /// 获取电芯数据（返回基类）
     /// </summary>
-    public void SetCell<T>(string barcode, string key, T value)
-    {
-        if (!CellBags.ContainsKey(barcode))
-            CreateCell(barcode);
-
-        CellBags[barcode][key] = value!;
-        DataChanged?.Invoke("Cell", $"{barcode}.{key}", value);
-    }
+    public CellDataBase? GetCell(string barcode)
+        => CurrentCells.TryGetValue(barcode, out var cell) ? cell : null;
 
     /// <summary>
-    /// 从指定条码的电芯读取数据
+    /// 获取电芯数据（泛型，返回具体子类）
+    /// 调试时断点直接看到子类的所有属性
     /// </summary>
-    public T? GetCell<T>(string barcode, string key)
-    {
-        if (CellBags.TryGetValue(barcode, out var bag)
-            && bag.TryGetValue(key, out var val)
-            && val is T t)
-            return t;
-        return default;
-    }
+    public T? GetCell<T>(string barcode) where T : CellDataBase
+        => CurrentCells.TryGetValue(barcode, out var cell) && cell is T typed ? typed : null;
 
     /// <summary>
-    /// 获取指定电芯的全部数据（出料组装时用）
+    /// 电芯是否存在
     /// </summary>
-    public Dictionary<string, object>? GetCellBag(string barcode)
-        => CellBags.TryGetValue(barcode, out var bag) ? bag : null;
+    public bool HasCell(string barcode)
+        => CurrentCells.ContainsKey(barcode);
 
     /// <summary>
     /// 获取当前所有在制电芯的条码列表
     /// </summary>
-    public IReadOnlyList<string> GetAllCellBarcodes()
-        => CellBags.Keys.ToList().AsReadOnly();
+    public IReadOnlyList<string> GetAllBarcodes()
+        => CurrentCells.Keys.ToList().AsReadOnly();
 
     /// <summary>
     /// 电芯流转完成，移除数据释放空间
     /// </summary>
     public bool RemoveCell(string barcode)
     {
-        var removed = CellBags.Remove(barcode);
+        var removed = CurrentCells.Remove(barcode);
         if (removed)
             DataChanged?.Invoke("CellRemoved", barcode, null);
         return removed;
     }
 
-    // ── 调试辅助 ───────────────────────────────────────
+    // ── 调试辅助 ───────────────────────────────────────────
 
     /// <summary>
-    /// VS监视窗口展开可看到设备级数据快照
+    /// VS 监视窗口展开可看到设备级数据快照
     /// </summary>
     public Dictionary<string, string> DebugDeviceView
         => DeviceBag.OrderBy(kv => kv.Key)
@@ -147,24 +135,20 @@ public class ProductionContext
                         kv => $"{kv.Value} ({kv.Value?.GetType().Name})");
 
     /// <summary>
-    /// VS监视窗口展开可看到所有电芯数据快照
+    /// VS 监视窗口展开可看到所有电芯数据
+    /// 直接是强类型，展开就能看到所有属性
     /// </summary>
-    public Dictionary<string, Dictionary<string, string>> DebugCellView
-        => CellBags.ToDictionary(
-            cell => cell.Key,
-            cell => cell.Value.OrderBy(kv => kv.Key)
-                              .ToDictionary(
-                                  kv => kv.Key,
-                                  kv => $"{kv.Value} ({kv.Value?.GetType().Name})"));
+    public IReadOnlyDictionary<string, CellDataBase> DebugCellView
+        => CurrentCells;
 
-    // ── 重置 ───────────────────────────────────────────
+    // ── 重置 ───────────────────────────────────────────────
 
     /// <summary>
     /// 清空所有电芯数据（不清设备级数据和步骤状态）
     /// </summary>
     public void ClearAllCells()
     {
-        CellBags.Clear();
+        CurrentCells.Clear();
         DataChanged?.Invoke("AllCellsCleared", "", null);
     }
 
@@ -174,7 +158,7 @@ public class ProductionContext
     public void Reset()
     {
         DeviceBag.Clear();
-        CellBags.Clear();
+        CurrentCells.Clear();
         StepStates.Clear();
     }
 }

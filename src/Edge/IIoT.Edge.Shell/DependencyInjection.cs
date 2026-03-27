@@ -1,9 +1,16 @@
 ﻿// 路径：src/Edge/IIoT.Edge.Shell/DependencyInjection.cs
 using IIoT.Edge.CloudSync;
+using IIoT.Edge.Contracts;
+using IIoT.Edge.Contracts.Hardware.Queries;
+using IIoT.Edge.Contracts.Plc;
+using IIoT.Edge.DataMapping;
+using IIoT.Edge.DataMapping.Cloud.Injection;
 using IIoT.Edge.Infrastructure;
 using IIoT.Edge.Infrastructure.Dapper;
+using IIoT.Edge.Infrastructure.Excel;
 using IIoT.Edge.Module.Config;
 using IIoT.Edge.Module.Config.ParamView.Mappings;
+using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using IIoT.Edge.Module.Formula;
 using IIoT.Edge.Module.Hardware;
 using IIoT.Edge.Module.Hardware.HardwareConfigView.Mappings;
@@ -17,15 +24,9 @@ using IIoT.Edge.Tasks;
 using IIoT.Edge.Tasks.DataPipeline;
 using IIoT.Edge.UI.Shared;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.Plc;
-using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
-using IIoT.Edge.Contracts.Hardware.Queries;
-using IIoT.Edge.Infrastructure.Excel;
-using IIoT.Edge.DataMapping;
 namespace IIoT.Edge.Shell;
 
 public static class DependencyInjection
@@ -83,6 +84,7 @@ public static class DependencyInjection
         {
             cfg.AddProfile<HardwareMappingProfile>();
             cfg.AddProfile<ConfigMappingProfile>();
+            cfg.AddProfile<InjectionCloudProfile>();  // ← 加这行
         });
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();

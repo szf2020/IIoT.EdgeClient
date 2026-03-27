@@ -1,4 +1,4 @@
-﻿// 路径：src/Infrastructure/IIoT.Edge.Tasks/Context/ProductionContextStore.cs
+﻿using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -20,7 +20,11 @@ public class ProductionContextStore
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new ObjectToInferredTypesConverter() }
+        Converters =
+        {
+            new ObjectToInferredTypesConverter(),
+            new CellDataBaseConverter()
+        }
     };
 
     public ProductionContextStore(ILogService logger, string? persistDirectory = null)
@@ -95,7 +99,7 @@ public class ProductionContextStore
                         DeviceName = snapshot.DeviceName,
                         StepStates = snapshot.StepStates ?? new(),
                         DeviceBag = snapshot.DeviceBag ?? new(),
-                        CellBags = snapshot.CellBags ?? new()
+                        CurrentCells = snapshot.CurrentCells ?? new()
                     };
                     _contexts[ctx.DeviceId] = ctx;
                 }
@@ -103,12 +107,11 @@ public class ProductionContextStore
 
             _logger.Info($"[ContextStore] 已恢复 {list.Count} 台设备的生产上下文");
 
-            // 打印恢复摘要，方便排查
             lock (_lock)
             {
                 foreach (var ctx in _contexts.Values)
                 {
-                    var cellCount = ctx.CellBags.Count;
+                    var cellCount = ctx.CurrentCells.Count;
                     var stepInfo = string.Join(", ",
                         ctx.StepStates.Select(kv => $"{kv.Key}={kv.Value}"));
 
@@ -140,13 +143,12 @@ public class ProductionContextStore
                     DeviceName = ctx.DeviceName,
                     StepStates = ctx.StepStates,
                     DeviceBag = ctx.DeviceBag,
-                    CellBags = ctx.CellBags
+                    CurrentCells = ctx.CurrentCells
                 }).ToList();
             }
 
             var json = JsonSerializer.Serialize(snapshots, _jsonOptions);
 
-            // 先写临时文件再替换，防止写到一半崩溃导致文件损坏
             var tempPath = _persistPath + ".tmp";
             File.WriteAllText(tempPath, json);
             File.Move(tempPath, _persistPath, overwrite: true);
@@ -173,7 +175,7 @@ public class ProductionContextStore
 }
 
 /// <summary>
-/// 持久化用的快照结构（与 ProductionContext 字段对应，但不携带事件等运行时对象）
+/// 持久化用的快照结构
 /// </summary>
 internal class ContextSnapshot
 {
@@ -181,7 +183,45 @@ internal class ContextSnapshot
     public string DeviceName { get; set; } = string.Empty;
     public Dictionary<string, int> StepStates { get; set; } = new();
     public Dictionary<string, object> DeviceBag { get; set; } = new();
-    public Dictionary<string, Dictionary<string, object>> CellBags { get; set; } = new();
+    public Dictionary<string, CellDataBase> CurrentCells { get; set; } = new();
+}
+
+/// <summary>
+/// CellDataBase 多态 JSON 序列化/反序列化
+/// 
+/// 序列化时自动带上 processType 字段
+/// 反序列化时根据 processType 还原具体子类
+/// 
+/// 新增设备类型只需在 switch 里加一行 case
+/// </summary>
+internal class CellDataBaseConverter : JsonConverter<CellDataBase>
+{
+    public override CellDataBase? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        using var doc = JsonDocument.ParseValue(ref reader);
+        var root = doc.RootElement;
+
+        var processType = root.TryGetProperty("processType", out var prop)
+            ? prop.GetString()
+            : null;
+
+        var json = root.GetRawText();
+
+        return processType switch
+        {
+            "Injection" => JsonSerializer.Deserialize<InjectionCellData>(json, options),
+            // 新增设备类型在这里加 case：
+            // "DieCutting" => JsonSerializer.Deserialize<DieCuttingCellData>(json, options),
+            // "PreCharge"  => JsonSerializer.Deserialize<PreChargeCellData>(json, options),
+            _ => throw new JsonException($"未知的 ProcessType: {processType}")
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, CellDataBase value, JsonSerializerOptions options)
+    {
+        // 序列化具体子类的所有属性（包括基类的）
+        JsonSerializer.Serialize(writer, value, value.GetType(), options);
+    }
 }
 
 /// <summary>
