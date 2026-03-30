@@ -1,6 +1,7 @@
 ﻿using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.Capacity;
 using IIoT.Edge.Contracts;
+using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Contracts.Device;
@@ -14,9 +15,10 @@ namespace IIoT.Edge.CloudSync.Capacity;
 /// 
 /// 消费链 Order=10（最先执行）
 /// 每个电芯完成时：
-///   1. ITodayCapacityStore.Increment — 内存计数 +1
-///   2. MediatR 发布 CapacityUpdatedNotification — UI 实时刷新
-///   3. Offline 时写 SQLite 离线缓冲 — 待补传
+///   1. 通过 CellData.DeviceName 定位对应设备的 TodayCapacity
+///   2. ITodayCapacityStore.Increment — 内存计数 +1
+///   3. MediatR 发布 CapacityUpdatedNotification — UI 实时刷新
+///   4. Offline 时写 SQLite 离线缓冲 — 待补传
 /// 
 /// 永远返回 true，不进重传队列
 /// </summary>
@@ -51,14 +53,15 @@ public class CapacityConsumer : ICapacityConsumer
         try
         {
             var cellData = record.CellData;
+            var deviceName = cellData.DeviceName;
             var completedTime = cellData.CompletedTime ?? DateTime.Now;
             var isOk = cellData.CellResult ?? false;
 
             // 1. 内存计数 +1，返回班次编码
-            var shiftCode = _capacityStore.Increment(completedTime, isOk);
+            var shiftCode = _capacityStore.Increment(deviceName, completedTime, isOk);
 
             // 2. MediatR 通知 UI 实时刷新
-            var snapshot = _capacityStore.GetSnapshot();
+            var snapshot = _capacityStore.GetSnapshot(deviceName);
             await _publisher.Publish(new CapacityUpdatedNotification
             {
                 Snapshot = snapshot

@@ -1,32 +1,32 @@
 ﻿using IIoT.Edge.Common.DataPipeline.Capacity;
 using IIoT.Edge.Common.DataPipeline.CellData;
+using System.Text.Json.Serialization;
 
-namespace IIoT.Edge.Tasks.Context;
+namespace IIoT.Edge.Common.Context;
 
 /// <summary>
-/// 单台设备的生产运行时上下文（全局对象，可被任意 Task 访问）
+/// 单台 PLC 设备的生产运行时上下文
 /// 
-/// 两层数据结构：
-/// 1. DeviceBag  — 设备级数据（工单号、状态机步骤等，不属于某个电芯）
-/// 2. CurrentCells — 电芯级数据（按条码隔离，强类型对象，断点直接可看）
+/// DeviceName 是唯一标识（聚合 key），贯穿全链路
+/// 一个 PLC 设备 = 一个 ProductionContext
 /// 
-/// 电芯流转完成后从 CurrentCells 移除，只保留当前在制品
-/// 
-/// 调试体验：
-///   断点展开 CurrentCells 即可看到每颗电芯的完整强类型数据
-///   不需要翻 Dictionary，不需要记 key 名
+/// 数据结构：
+/// 1. DeviceBag    — 设备级数据（工单号、状态机步骤等）
+/// 2. CurrentCells — 电芯级数据（按条码隔离，强类型）
+/// 3. TodayCapacity — 当天产能快照（白班/夜班）
 /// </summary>
 public class ProductionContext
 {
     /// <summary>
-    /// 所属设备ID（对应 NetworkDeviceEntity.Id）
-    /// </summary>
-    public int DeviceId { get; set; }
-
-    /// <summary>
-    /// 设备名称（日志/UI用）
+    /// 本地设备名（唯一 key，如"注液机1"）
     /// </summary>
     public string DeviceName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// PLC 设备数据库主键（NetworkDeviceEntity.Id）
+    /// 非聚合 key，仅供需要数据库关联的场景使用
+    /// </summary>
+    public int DeviceId { get; set; }
 
     /// <summary>
     /// 各任务的状态机当前步骤（key=TaskName, value=Step）
@@ -40,13 +40,11 @@ public class ProductionContext
 
     /// <summary>
     /// 当前在制电芯（key=条码, value=强类型电芯数据）
-    /// 断点展开即可看到每颗电芯的完整数据
     /// </summary>
     public Dictionary<string, CellDataBase> CurrentCells { get; set; } = new();
 
     /// <summary>
     /// 当天产能快照（白班/夜班分别统计）
-    /// 跟随 ProductionContextStore JSON 持久化
     /// </summary>
     public TodayCapacity TodayCapacity { get; set; } = new();
 
@@ -85,43 +83,24 @@ public class ProductionContext
 
     // ── 电芯操作 ───────────────────────────────────────────
 
-    /// <summary>
-    /// 添加一颗电芯到上下文（流程状态机创建强类型对象后调用）
-    /// </summary>
     public void AddCell(string barcode, CellDataBase cellData)
     {
         CurrentCells[barcode] = cellData;
         DataChanged?.Invoke("CellAdded", barcode, cellData);
     }
 
-    /// <summary>
-    /// 获取电芯数据（返回基类）
-    /// </summary>
     public CellDataBase? GetCell(string barcode)
         => CurrentCells.TryGetValue(barcode, out var cell) ? cell : null;
 
-    /// <summary>
-    /// 获取电芯数据（泛型，返回具体子类）
-    /// 调试时断点直接看到子类的所有属性
-    /// </summary>
     public T? GetCell<T>(string barcode) where T : CellDataBase
         => CurrentCells.TryGetValue(barcode, out var cell) && cell is T typed ? typed : null;
 
-    /// <summary>
-    /// 电芯是否存在
-    /// </summary>
     public bool HasCell(string barcode)
         => CurrentCells.ContainsKey(barcode);
 
-    /// <summary>
-    /// 获取当前所有在制电芯的条码列表
-    /// </summary>
     public IReadOnlyList<string> GetAllBarcodes()
         => CurrentCells.Keys.ToList().AsReadOnly();
 
-    /// <summary>
-    /// 电芯流转完成，移除数据释放空间
-    /// </summary>
     public bool RemoveCell(string barcode)
     {
         var removed = CurrentCells.Remove(barcode);
@@ -132,40 +111,30 @@ public class ProductionContext
 
     // ── 调试辅助 ───────────────────────────────────────────
 
-    /// <summary>
-    /// VS 监视窗口展开可看到设备级数据快照
-    /// </summary>
+    [JsonIgnore]
     public Dictionary<string, string> DebugDeviceView
         => DeviceBag.OrderBy(kv => kv.Key)
                     .ToDictionary(
                         kv => kv.Key,
                         kv => $"{kv.Value} ({kv.Value?.GetType().Name})");
 
-    /// <summary>
-    /// VS 监视窗口展开可看到所有电芯数据
-    /// 直接是强类型，展开就能看到所有属性
-    /// </summary>
+    [JsonIgnore]
     public IReadOnlyDictionary<string, CellDataBase> DebugCellView
         => CurrentCells;
 
     // ── 重置 ───────────────────────────────────────────────
 
-    /// <summary>
-    /// 清空所有电芯数据（不清设备级数据和步骤状态）
-    /// </summary>
     public void ClearAllCells()
     {
         CurrentCells.Clear();
         DataChanged?.Invoke("AllCellsCleared", "", null);
     }
 
-    /// <summary>
-    /// 全部重置
-    /// </summary>
     public void Reset()
     {
         DeviceBag.Clear();
         CurrentCells.Clear();
         StepStates.Clear();
+        TodayCapacity.Reset();
     }
 }

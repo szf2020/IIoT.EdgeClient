@@ -1,4 +1,5 @@
 ﻿using IIoT.Edge.Common.DataPipeline.Capacity;
+using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
 
 namespace IIoT.Edge.Tasks.Context;
@@ -6,48 +7,43 @@ namespace IIoT.Edge.Tasks.Context;
 /// <summary>
 /// 当天产能内存存储实现
 /// 
-/// 操作 ProductionContext.TodayCapacity 内存对象
-/// 持久化跟随 ProductionContextStore 的 JSON 序列化（30秒自动保存 + 退出保存）
+/// 通过 ProductionContextStore 按 deviceName 拿到对应 Context
+/// 操作 Context.TodayCapacity 内存对象
+/// 持久化跟随 ProductionContextStore 的 JSON 自动走
 /// 
 /// 班次分界点从 ShiftConfig（appsettings.json）读取
 /// </summary>
 public class TodayCapacityStore : ITodayCapacityStore
 {
-    private readonly ProductionContext _context;
+    private readonly IProductionContextStore _contextStore;
     private readonly ShiftConfig _shiftConfig;
 
     public TodayCapacityStore(
-        ProductionContext context,
+        IProductionContextStore contextStore,
         ShiftConfig shiftConfig)
     {
-        _context = context;
+        _contextStore = contextStore;
         _shiftConfig = shiftConfig;
     }
 
-    /// <summary>
-    /// 产能 +1，返回班次编码
-    /// </summary>
-    public string Increment(DateTime completedTime, bool isOk)
+    public string Increment(string deviceName, DateTime completedTime, bool isOk)
     {
-        return _context.TodayCapacity.Increment(
+        var ctx = _contextStore.GetOrCreate(deviceName);
+        return ctx.TodayCapacity.Increment(
             completedTime, isOk,
             _shiftConfig.DayStartTime,
             _shiftConfig.DayEndTime);
     }
 
-    /// <summary>
-    /// 当天快照
-    /// </summary>
-    public TodayCapacity GetSnapshot()
+    public TodayCapacity GetSnapshot(string deviceName)
     {
-        return _context.TodayCapacity;
+        var ctx = _contextStore.GetOrCreate(deviceName);
+        return ctx.TodayCapacity;
     }
 
-    /// <summary>
-    /// 手动清零
-    /// </summary>
-    public void Reset()
+    public void Reset(string deviceName)
     {
-        _context.TodayCapacity.Reset();
+        var ctx = _contextStore.GetOrCreate(deviceName);
+        ctx.TodayCapacity.Reset();
     }
 }

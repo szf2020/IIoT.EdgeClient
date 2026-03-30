@@ -1,5 +1,6 @@
 ﻿// 路径：src/Edge/IIoT.Edge.Shell/DependencyInjection.cs
 using IIoT.Edge.CloudSync;
+using IIoT.Edge.Common.DataPipeline.Capacity;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Contracts.Plc;
@@ -35,13 +36,18 @@ public static class DependencyInjection
     /// 注册所有层的服务
     /// </summary>
     public static IServiceCollection AddShell(
-        this IServiceCollection services,
-        IViewRegistry viewRegistry,
-        IConfiguration configuration,
-        string dbDir)
+            this IServiceCollection services,
+            IViewRegistry viewRegistry,
+            IConfiguration configuration,
+            string dbDir)
     {
         // ── 数据库路径 ───────────────────────────────
         var efDbPath = Path.Combine(dbDir, "edge.db");
+
+        // ── 班次配置 ─────────────────────────────────
+        var shiftConfig = new ShiftConfig();
+        configuration.GetSection("Shift").Bind(shiftConfig);
+        services.AddSingleton(shiftConfig);
 
         // ── 基础设施层 ──────────────────────────────
         var excelDir = Path.Combine(
@@ -57,7 +63,6 @@ public static class DependencyInjection
         services.AddEdgeTasks();
         services.AddDataPipeline();
 
-        // ── MediatR ─────────────────────────────────
         // ── MediatR ─────────────────────────────────
         services.AddMediatR(cfg =>
         {
@@ -84,7 +89,7 @@ public static class DependencyInjection
         {
             cfg.AddProfile<HardwareMappingProfile>();
             cfg.AddProfile<ConfigMappingProfile>();
-            cfg.AddProfile<InjectionCloudProfile>();  // ← 加这行
+            cfg.AddProfile<InjectionCloudProfile>();
         });
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();

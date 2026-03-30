@@ -1,4 +1,5 @@
 ﻿// 路径：src/Infrastructure/IIoT.Edge.Tasks/Base/ScheduledTaskBase.cs
+using IIoT.Edge.Common.Context;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Plc;
 using IIoT.Edge.Tasks.Context;

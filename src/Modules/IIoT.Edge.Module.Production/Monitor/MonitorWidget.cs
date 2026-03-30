@@ -1,4 +1,6 @@
-﻿using IIoT.Edge.Common.DataPipeline.CellData;
+﻿using IIoT.Edge.Common.Context;
+using IIoT.Edge.Common.DataPipeline.CellData;
+using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Tasks.Context;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using System.Collections.ObjectModel;
@@ -13,7 +15,7 @@ public class MonitorWidget : WidgetBase
     public override string WidgetId => "Production.Monitor";
     public override string WidgetName => "实时数据监控";
 
-    private readonly ProductionContextStore _contextStore;
+    private readonly IProductionContextStore _contextStore;
     private readonly DispatcherTimer _refreshTimer;
 
     public ObservableCollection<DeviceTabVm> DeviceTabs { get; } = new();
@@ -25,7 +27,7 @@ public class MonitorWidget : WidgetBase
         set { _selectedTabIndex = value; OnPropertyChanged(); }
     }
 
-    public MonitorWidget(ProductionContextStore contextStore)
+    public MonitorWidget(IProductionContextStore contextStore)
     {
         _contextStore = contextStore;
 

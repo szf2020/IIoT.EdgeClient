@@ -1,7 +1,8 @@
-﻿// 路径：src/Modules/IIoT.Edge.Module.Hardware/Plc/PlcConnectionManager.cs
+﻿using IIoT.Edge.Common.Context;
 using IIoT.Edge.Common.Enums;
 using IIoT.Edge.Common.Repository;
 using IIoT.Edge.Contracts;
+using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Contracts.Plc;
 using IIoT.Edge.Contracts.Plc.Factory;
 using IIoT.Edge.Contracts.Plc.Store;
@@ -16,7 +17,7 @@ public class PlcConnectionManager : IDisposable
     private readonly IRepository<IoMappingEntity> _ioMappings;
     private readonly IPlcDataStore _dataStore;
     private readonly IPlcServiceFactory _plcServiceFactory;
-    private readonly ProductionContextStore _contextStore;
+    private readonly IProductionContextStore _contextStore;
     private readonly ILogService _logger;
 
     private readonly Dictionary<int, IPlcService> _plcInstances = new();
@@ -34,7 +35,7 @@ public class PlcConnectionManager : IDisposable
         IRepository<IoMappingEntity> ioMappings,
         IPlcDataStore dataStore,
         IPlcServiceFactory plcServiceFactory,
-        ProductionContextStore contextStore,
+        IProductionContextStore contextStore,
         ILogService logger)
     {
         _networkDevices = networkDevices;
@@ -63,10 +64,10 @@ public class PlcConnectionManager : IDisposable
         => _plcInstances.TryGetValue(networkDeviceId, out var plc) ? plc : null;
 
     /// <summary>
-    /// 获取指定设备的生产上下文
+    /// 获取指定设备的生产上下文（按设备名）
     /// </summary>
-    public ProductionContext? GetContext(int networkDeviceId)
-        => _contextStore.GetOrCreate(networkDeviceId);
+    public ProductionContext? GetContext(string deviceName)
+        => _contextStore.GetOrCreate(deviceName);
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
@@ -75,7 +76,6 @@ public class PlcConnectionManager : IDisposable
 
         foreach (var device in devices)
         {
-            // 【修改点】：使用 Task.Run 将每个设备的初始化放入后台独立运行，互不阻塞
             _ = Task.Run(async () =>
             {
                 try
@@ -111,8 +111,9 @@ public class PlcConnectionManager : IDisposable
         _dataStore.Register(device.Id, readCount, writeCount);
         var buffer = _dataStore.GetBuffer(device.Id);
 
-        // 获取或恢复该设备的生产上下文
-        var context = _contextStore.GetOrCreate(device.Id, device.DeviceName);
+        // 获取或恢复该设备的生产上下文（按设备名）
+        var context = _contextStore.GetOrCreate(device.DeviceName);
+        context.DeviceId = device.Id;
 
         // 创建PLC通信实例
         var plcType = Enum.Parse<PlcType>(device.DeviceModel!, ignoreCase: true);
@@ -135,13 +136,11 @@ public class PlcConnectionManager : IDisposable
         if (buffer is not null
             && _taskFactories.TryGetValue(device.DeviceName, out var factory))
         {
-            // buffer 是 IPlcBufferTransport，传给工厂时自动向上转为 IPlcBuffer
             tasks.AddRange(factory(buffer, context));
         }
 
         _plcTasks[device.Id] = tasks;
 
-        // 【修改点】：不再直接 await，而是把每个长任务放到后台独立运行
         foreach (var task in tasks)
         {
             _ = Task.Run(async () =>
@@ -163,7 +162,6 @@ public class PlcConnectionManager : IDisposable
 
     public async Task ReloadAsync(string deviceName, CancellationToken ct = default)
     {
-        // 先通过名称查设备
         var device = (await _networkDevices.GetListAsync(
             x => x.DeviceName == deviceName, ct)).FirstOrDefault();
 
@@ -171,7 +169,6 @@ public class PlcConnectionManager : IDisposable
 
         var deviceId = device.Id;
 
-        // 只取消该设备的任务
         if (_deviceCtsMap.TryGetValue(deviceId, out var oldCts))
         {
             oldCts.Cancel();

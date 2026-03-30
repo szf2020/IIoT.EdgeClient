@@ -1,8 +1,10 @@
 ﻿using IIoT.Edge.CloudSync.Auth;
+using IIoT.Edge.CloudSync.Capacity;
 using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.CloudSync.Device;
 using IIoT.Edge.CloudSync.PassStation;
 using IIoT.Edge.Contracts.Auth;
+using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.Device;
 using Microsoft.Extensions.Configuration;
@@ -49,6 +51,12 @@ public static class DependencyInjection
 
         // ── 云端上报消费者 ─────────────────────────────────────
         services.AddSingleton<ICloudConsumer, CloudConsumer>();
+
+        // ── 产能消费者 ─────────────────────────────────────────
+        services.AddSingleton<ICapacityConsumer, CapacityConsumer>();
+
+        // ── 产能定时同步 ───────────────────────────────────────
+        services.AddSingleton<ICapacitySyncTask, CapacitySyncTask>();
 
         return services;
     }

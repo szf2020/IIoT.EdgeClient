@@ -1,4 +1,5 @@
-﻿using IIoT.Edge.Contracts;
+﻿using IIoT.Edge.Common.Context;
+using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Plc.Store;
 using IIoT.Edge.Tasks.Base;
 using IIoT.Edge.Tasks.Context;
