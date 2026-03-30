@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.Contracts.DataPipeline;
+﻿namespace IIoT.Edge.Contracts.DataPipeline.Consumers;
 
 /// <summary>
 /// 云端上报消费者接口

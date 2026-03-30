@@ -5,27 +5,36 @@ namespace IIoT.Edge.Contracts.DataPipeline;
 /// <summary>
 /// 电芯数据消费者接口
 /// 
-/// 每个消费者负责一个环节的数据处理：
-///   MES上报、云端上报、Excel写入、UI通知等
+/// ProcessQueueTask 按 Order 顺序依次调用每个消费者
+/// 任何一步失败不阻塞后续消费者
 /// 
-/// ProcessQueueTask 按 Order 顺序严格串行调用
-/// 任何一个返回 false，该条记录立即进入重传队列
+/// RetryChannel 决定失败后的补传策略：
+///   null      → 失败不入重传队列（纯本地操作，如 Excel、UI）
+///   "Cloud"   → 进云端补传队列（CloudRetryTask 负责）
+///   "MES"     → 进 MES 补传队列（MesRetryTask 负责）
 /// </summary>
 public interface ICellDataConsumer
 {
     /// <summary>
-    /// 消费者名称（用于日志和失败记录的 FailedTarget 字段）
+    /// 消费者标识（日志 / 重传定位用）
     /// </summary>
     string Name { get; }
 
     /// <summary>
-    /// 优先级（数值越小越先执行）
-    /// MES=10, Cloud=20, Excel=30, UI=40
+    /// 执行顺序，数字越小越先执行
     /// </summary>
     int Order { get; }
 
     /// <summary>
-    /// 处理一条电芯数据
+    /// 失败后进哪个补传通道
+    /// null = 不补传（纯本地操作）
+    /// "Cloud" / "MES" = 按通道补传
+    /// </summary>
+    string? RetryChannel { get; }
+
+    /// <summary>
+    /// 处理一条电芯完成记录
+    /// true = 成功，false = 失败（按 RetryChannel 决定是否入重传队列）
     /// </summary>
     Task<bool> ProcessAsync(CellCompletedRecord record);
 }

@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.Common.DataPipeline;
+﻿namespace IIoT.Edge.Common.DataPipeline.Capacity;
 
 /// <summary>
 /// 产能记录实体 — SQLite 存储

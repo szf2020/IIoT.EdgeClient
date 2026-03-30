@@ -1,6 +1,7 @@
 ﻿using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Tasks.Base;
 using IIoT.Edge.Tasks.DataPipeline.Services;
 
@@ -9,11 +10,13 @@ namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 /// <summary>
 /// 主队列消费任务
 /// 
-/// 从内存队列中取出电芯数据，按消费者注册顺序严格串行执行：
-///   Cloud上报 → Excel写入 → UI通知
+/// 从内存队列中取出电芯数据，按消费者 Order 严格串行执行：
+///   Capacity → MES → Cloud → Excel → UI
 /// 
-/// 任何一个消费者失败 → 存入 SQLite 重传队列
-/// 全局任务，不绑定特定设备
+/// 核心原则：任何一个消费者失败 **不阻塞后续消费者**
+///   - RetryChannel != null 的消费者失败 → 按 channel 存入重传队列
+///   - RetryChannel == null 的消费者失败 → 仅记日志，不入队列
+///   - 无论成功失败，继续执行下一个消费者
 /// </summary>
 public class ProcessQueueTask : ScheduledTaskBase
 {
@@ -53,39 +56,53 @@ public class ProcessQueueTask : ScheduledTaskBase
 
                 if (!success)
                 {
-                    Logger.Warn($"[{record.CellData.ProcessType}] {consumer.Name} 处理失败" +
-                        $"，{label}，转入重传队列");
-
-                    await SaveToRetryAsync(record, consumer.Name, "消费者返回失败");
-                    return;
+                    await HandleFailureAsync(record, consumer, "消费者返回失败");
+                    // 不 return，继续下一个消费者
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"[{record.CellData.ProcessType}] {consumer.Name} 处理异常" +
-                    $"，{label}，{ex.Message}");
-
-                await SaveToRetryAsync(record, consumer.Name, ex.Message);
-                return;
+                await HandleFailureAsync(record, consumer, ex.Message);
+                // 不 return，继续下一个消费者
             }
         }
 
-        Logger.Info($"[{record.CellData.ProcessType}] {label} 全部消费完成");
+        Logger.Info($"[{record.CellData.ProcessType}] {label} 消费链执行完毕");
     }
 
-    private async Task SaveToRetryAsync(
+    /// <summary>
+    /// 处理消费者失败
+    /// RetryChannel 不为 null → 按通道存入重传队列
+    /// RetryChannel 为 null   → 仅记日志
+    /// </summary>
+    private async Task HandleFailureAsync(
         CellCompletedRecord record,
-        string failedTarget,
+        ICellDataConsumer consumer,
         string errorMessage)
     {
+        var label = record.CellData.DisplayLabel;
+
+        if (consumer.RetryChannel is null)
+        {
+            // 纯本地消费者（Capacity/Excel/UI），失败不补传
+            Logger.Warn($"[{record.CellData.ProcessType}] {consumer.Name} 失败" +
+                $"，{label}，{errorMessage}（不补传）");
+            return;
+        }
+
+        // 有补传通道的消费者（Cloud/MES），存入重传队列
+        Logger.Warn($"[{record.CellData.ProcessType}] {consumer.Name} 失败" +
+            $"，{label}，转入 {consumer.RetryChannel} 重传队列");
+
         try
         {
-            await _failedStore.SaveAsync(record, failedTarget, errorMessage);
+            await _failedStore.SaveAsync(
+                record, consumer.Name, errorMessage, consumer.RetryChannel);
         }
         catch (Exception ex)
         {
             Logger.Error($"[{record.CellData.ProcessType}] 写入重传队列失败！" +
-                $"{record.CellData.DisplayLabel}，{ex.Message}");
+                $"{label}，{ex.Message}");
         }
     }
 }

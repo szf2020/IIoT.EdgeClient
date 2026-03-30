@@ -1,4 +1,5 @@
-﻿using IIoT.Edge.Common.DataPipeline.CellData;
+﻿using IIoT.Edge.Common.DataPipeline.Capacity;
+using IIoT.Edge.Common.DataPipeline.CellData;
 
 namespace IIoT.Edge.Tasks.Context;
 
@@ -42,6 +43,12 @@ public class ProductionContext
     /// 断点展开即可看到每颗电芯的完整数据
     /// </summary>
     public Dictionary<string, CellDataBase> CurrentCells { get; set; } = new();
+
+    /// <summary>
+    /// 当天产能快照（白班/夜班分别统计）
+    /// 跟随 ProductionContextStore JSON 持久化
+    /// </summary>
+    public TodayCapacity TodayCapacity { get; set; } = new();
 
     /// <summary>
     /// 数据变更事件（UI绑定刷新用）

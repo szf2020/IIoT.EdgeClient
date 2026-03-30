@@ -2,15 +2,21 @@
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Stores;
+using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.Tasks.Base;
 using System.Text.Json;
 
 namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 
 /// <summary>
-/// 重传队列任务
+/// 通道补传任务
 /// 
-/// 定时从 SQLite 捞出失败记录：
+/// 按 channel 实例化，每个通道一个实例：
+///   CloudRetryTask → channel="Cloud"，依赖 DeviceService Online/Offline
+///   MesRetryTask   → channel="MES"，后期依赖 MES 网络状态
+/// 
+/// 定时从 SQLite 捞出对应通道的失败记录：
 ///   根据 ProcessType 反序列化 CellDataJson → 具体子类
 ///   包装成 CellCompletedRecord，从 FailedTarget 那步继续消费
 /// 
@@ -22,7 +28,9 @@ namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 /// </summary>
 public class RetryTask : ScheduledTaskBase
 {
+    private readonly string _channel;
     private readonly IFailedRecordStore _failedStore;
+    private readonly IDeviceService _deviceService;
     private readonly List<ICellDataConsumer> _consumers;
 
     private const int MaxRetryCount = 20;
@@ -32,23 +40,37 @@ public class RetryTask : ScheduledTaskBase
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    public override string TaskName => "RetryTask";
+    public override string TaskName => $"RetryTask[{_channel}]";
 
     protected override int ExecuteInterval => 5000;
 
     public RetryTask(
+        string channel,
         ILogService logger,
         IFailedRecordStore failedStore,
+        IDeviceService deviceService,
         IEnumerable<ICellDataConsumer> consumers)
         : base(logger)
     {
+        _channel = channel;
         _failedStore = failedStore;
+        _deviceService = deviceService;
         _consumers = consumers.OrderBy(c => c.Order).ToList();
     }
 
     protected override async Task ExecuteAsync()
     {
-        var records = await _failedStore.GetPendingAsync(batchSize: 5).ConfigureAwait(false);
+        // Cloud 通道：Offline 时跳过
+        if (_channel == "Cloud" && _deviceService.CurrentState == NetworkState.Offline)
+            return;
+
+        // MES 通道：后期加 MES 网络状态判断
+        // if (_channel == "MES" && _mesService.CurrentState == MesState.Offline)
+        //     return;
+
+        var records = await _failedStore
+            .GetPendingAsync(_channel, batchSize: 5)
+            .ConfigureAwait(false);
 
         if (records.Count == 0)
             return;
@@ -64,7 +86,7 @@ public class RetryTask : ScheduledTaskBase
         var startIndex = _consumers.FindIndex(c => c.Name == record.FailedTarget);
         if (startIndex < 0)
         {
-            Logger.Warn($"[重传] ProcessType: {record.ProcessType}，消费者 {record.FailedTarget} 不存在，删除记录");
+            Logger.Warn($"[重传-{_channel}] 消费者 {record.FailedTarget} 不存在，删除记录");
             await _failedStore.DeleteAsync(record.Id);
             return;
         }
@@ -73,7 +95,7 @@ public class RetryTask : ScheduledTaskBase
         var cellData = DeserializeCellData(record.ProcessType, record.CellDataJson);
         if (cellData is null)
         {
-            Logger.Error($"[重传] ProcessType: {record.ProcessType} 反序列化失败，删除记录");
+            Logger.Error($"[重传-{_channel}] ProcessType: {record.ProcessType} 反序列化失败，删除记录");
             await _failedStore.DeleteAsync(record.Id);
             return;
         }
@@ -81,9 +103,14 @@ public class RetryTask : ScheduledTaskBase
         var completedRecord = new CellCompletedRecord { CellData = cellData };
         var label = cellData.DisplayLabel;
 
+        // 从失败的消费者开始，只重试同通道的消费者
         for (int i = startIndex; i < _consumers.Count; i++)
         {
             var consumer = _consumers[i];
+
+            // 跳过不属于本通道的消费者
+            if (consumer.RetryChannel != _channel)
+                continue;
 
             try
             {
@@ -91,21 +118,21 @@ public class RetryTask : ScheduledTaskBase
 
                 if (!success)
                 {
-                    Logger.Warn($"[重传] {label}，{consumer.Name} 仍然失败");
+                    Logger.Warn($"[重传-{_channel}] {label}，{consumer.Name} 仍然失败");
                     await HandleRetryFailureAsync(record, consumer.Name, "消费者返回失败");
                     return;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"[重传] {label}，{consumer.Name} 异常: {ex.Message}");
+                Logger.Error($"[重传-{_channel}] {label}，{consumer.Name} 异常: {ex.Message}");
                 await HandleRetryFailureAsync(record, consumer.Name, ex.Message);
                 return;
             }
         }
 
         await _failedStore.DeleteAsync(record.Id);
-        Logger.Info($"[重传] {label} 补传成功，已从重传队列移除");
+        Logger.Info($"[重传-{_channel}] {label} 补传成功，已从重传队列移除");
     }
 
     private async Task HandleRetryFailureAsync(
@@ -117,7 +144,8 @@ public class RetryTask : ScheduledTaskBase
 
         if (newRetryCount > MaxRetryCount)
         {
-            Logger.Warn($"[重传] ProcessType: {record.ProcessType} 已达最大重试次数 {MaxRetryCount}，停止自动重传");
+            Logger.Warn($"[重传-{_channel}] {record.ProcessType} " +
+                $"已达最大重试次数 {MaxRetryCount}，停止自动重传");
             await _failedStore.UpdateRetryAsync(
                 record.Id, newRetryCount, errorMessage, DateTime.MaxValue);
             return;
@@ -147,13 +175,12 @@ public class RetryTask : ScheduledTaskBase
             {
                 "Injection" => JsonSerializer.Deserialize<InjectionCellData>(json, _jsonOptions),
                 // "DieCutting" => JsonSerializer.Deserialize<DieCuttingCellData>(json, _jsonOptions),
-                // "PreCharge"  => JsonSerializer.Deserialize<PreChargeCellData>(json, _jsonOptions),
                 _ => null
             };
         }
         catch (Exception ex)
         {
-            Logger.Error($"[重传] CellData 反序列化失败: {ex.Message}");
+            Logger.Error($"[重传-{_channel}] CellData 反序列化失败: {ex.Message}");
             return null;
         }
     }

@@ -2,7 +2,7 @@
 using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.DataMapping.Cloud.Injection;
 using System.Net.Http.Json;
@@ -21,7 +21,7 @@ public class CloudConsumer : ICloudConsumer
     private readonly IDeviceService _deviceService;
     private readonly IMapper _mapper;
     private readonly ILogService _logger;
-
+    public string? RetryChannel => "Cloud";
     public string Name => "Cloud";
     public int Order => 20;
 

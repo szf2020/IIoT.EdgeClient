@@ -116,7 +116,7 @@ public class DeviceService : IDeviceService
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.Warn($"[DeviceService] 云端寻址失败: {response.StatusCode}");
+                _logger.Warn($"[DeviceService] 云端寻址失败: {response.StatusCode}  MAC码：{mac}");
                 GoOffline(mac);
                 return;
             }

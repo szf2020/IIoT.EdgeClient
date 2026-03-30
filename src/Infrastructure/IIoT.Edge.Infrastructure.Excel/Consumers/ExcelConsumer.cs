@@ -1,7 +1,7 @@
 ﻿using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using System.Reflection;
 
 namespace IIoT.Edge.Infrastructure.Excel.Consumers;
@@ -18,7 +18,7 @@ public class ExcelConsumer : IExcelConsumer
     private readonly string _excelDirectory;
     private readonly ILogService _logger;
     private readonly object _fileLock = new();
-
+    public string? RetryChannel => null;
     public string Name => "Excel";
     public int Order => 30;
 

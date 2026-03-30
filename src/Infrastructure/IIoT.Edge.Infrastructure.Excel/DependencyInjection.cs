@@ -1,5 +1,6 @@
 ﻿using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Infrastructure.Excel.Consumers;
 using Microsoft.Extensions.DependencyInjection;
 

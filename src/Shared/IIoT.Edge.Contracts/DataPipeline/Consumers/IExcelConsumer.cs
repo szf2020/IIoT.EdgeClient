@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.Contracts.DataPipeline;
+﻿namespace IIoT.Edge.Contracts.DataPipeline.Consumers;
 
 /// <summary>
 /// Excel 本地存储消费者接口

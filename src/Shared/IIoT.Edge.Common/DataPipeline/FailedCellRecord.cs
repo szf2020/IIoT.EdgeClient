@@ -9,6 +9,7 @@
 /// ProcessQueueTask 消费失败时写入：
 ///   CellData 序列化为 JSON 存入 CellDataJson
 ///   ProcessType 记录工序类型，反序列化时用于还原具体子类
+///   Channel 记录补传通道，RetryTask 按通道分别轮询
 /// 
 /// RetryTask 捞出时：
 ///   根据 ProcessType 反序列化 CellDataJson → 具体的 CellDataBase 子类
@@ -17,6 +18,13 @@
 public class FailedCellRecord
 {
     public long Id { get; set; }
+
+    /// <summary>
+    /// 补传通道标识
+    /// "Cloud" → CloudRetryTask 负责
+    /// "MES"   → MesRetryTask 负责
+    /// </summary>
+    public string Channel { get; set; } = string.Empty;
 
     /// <summary>
     /// 工序类型标识（"Injection"、"DieCutting" 等）
@@ -30,7 +38,7 @@ public class FailedCellRecord
     public string CellDataJson { get; set; } = string.Empty;
 
     /// <summary>
-    /// 在哪个消费者失败的（"Cloud" / "MES" / "Excel"）
+    /// 在哪个消费者失败的（"Cloud" / "MES"）
     /// 重试时从这一步开始，之前成功的不重复
     /// </summary>
     public string FailedTarget { get; set; } = string.Empty;

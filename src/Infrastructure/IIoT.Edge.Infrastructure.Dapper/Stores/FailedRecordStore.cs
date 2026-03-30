@@ -2,7 +2,7 @@
 using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Infrastructure.Dapper.Connection;
 using IIoT.Edge.Infrastructure.Dapper.Repository;
 using System.Text.Json;
@@ -28,6 +28,7 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
     protected override string CreateTableSql => @"
         CREATE TABLE IF NOT EXISTS failed_cell_records (
             Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            Channel         TEXT    NOT NULL,
             ProcessType     TEXT    NOT NULL,
             CellDataJson    TEXT    NOT NULL,
             FailedTarget    TEXT    NOT NULL,
@@ -37,8 +38,8 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
             CreatedAt       TEXT    NOT NULL
         );
 
-        CREATE INDEX IF NOT EXISTS idx_failed_next_retry
-            ON failed_cell_records (NextRetryTime);
+        CREATE INDEX IF NOT EXISTS idx_failed_channel_retry
+            ON failed_cell_records (Channel, NextRetryTime);
     ";
 
     public FailedRecordStore(
@@ -54,21 +55,23 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
     public async Task SaveAsync(
         CellCompletedRecord record,
         string failedTarget,
-        string errorMessage)
+        string errorMessage,
+        string channel)
     {
         var cellData = record.CellData;
         var cellDataJson = JsonSerializer.Serialize(cellData, cellData.GetType(), _jsonOptions);
 
         const string sql = @"
             INSERT INTO failed_cell_records
-                (ProcessType, CellDataJson, FailedTarget, ErrorMessage,
+                (Channel, ProcessType, CellDataJson, FailedTarget, ErrorMessage,
                  RetryCount, NextRetryTime, CreatedAt)
             VALUES
-                (@ProcessType, @CellDataJson, @FailedTarget, @ErrorMessage,
+                (@Channel, @ProcessType, @CellDataJson, @FailedTarget, @ErrorMessage,
                  0, @NextRetryTime, @CreatedAt)";
 
         await SafeExecuteAsync(sql, new
         {
+            Channel = channel,
             ProcessType = cellData.ProcessType,
             CellDataJson = cellDataJson,
             FailedTarget = failedTarget,
@@ -79,18 +82,20 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
     }
 
     /// <summary>
-    /// 获取待重传记录
+    /// 获取待重传记录（按通道过滤）
     /// </summary>
-    public async Task<List<FailedCellRecord>> GetPendingAsync(int batchSize = 5)
+    public async Task<List<FailedCellRecord>> GetPendingAsync(string channel, int batchSize = 10)
     {
         const string sql = @"
             SELECT * FROM failed_cell_records
-            WHERE NextRetryTime <= @Now
+            WHERE Channel = @Channel
+              AND NextRetryTime <= @Now
             ORDER BY NextRetryTime ASC
             LIMIT @BatchSize";
 
         var result = await SafeQueryAsync(sql, new
         {
+            Channel = channel,
             Now = DateTime.Now.ToString("O"),
             BatchSize = batchSize
         });
@@ -134,11 +139,21 @@ public class FailedRecordStore : DapperRepositoryBase<FailedCellRecord>, IFailed
     }
 
     /// <summary>
-    /// 获取当前失败记录总数（UI监控用）
+    /// 全部失败记录总数
     /// </summary>
     public async Task<int> GetCountAsync()
     {
         return await SafeCountAsync($"SELECT COUNT(*) FROM {TableName}");
+    }
+
+    /// <summary>
+    /// 按通道统计失败记录数
+    /// </summary>
+    public async Task<int> GetCountAsync(string channel)
+    {
+        return await SafeCountAsync(
+            $"SELECT COUNT(*) FROM {TableName} WHERE Channel = @Channel",
+            new { Channel = channel });
     }
 
     /// <summary>

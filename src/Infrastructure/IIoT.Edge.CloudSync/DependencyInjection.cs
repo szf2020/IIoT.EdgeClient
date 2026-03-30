@@ -3,7 +3,7 @@ using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.CloudSync.Device;
 using IIoT.Edge.CloudSync.PassStation;
 using IIoT.Edge.Contracts.Auth;
-using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.Device;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

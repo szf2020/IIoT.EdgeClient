@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.Contracts.DataPipeline;
+﻿namespace IIoT.Edge.Contracts.DataPipeline.Consumers;
 
 /// <summary>
 /// UI 通知 + 产能统计消费者接口
