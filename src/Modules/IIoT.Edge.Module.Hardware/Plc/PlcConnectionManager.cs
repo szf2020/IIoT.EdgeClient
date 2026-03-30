@@ -7,7 +7,6 @@ using IIoT.Edge.Contracts.Plc;
 using IIoT.Edge.Contracts.Plc.Factory;
 using IIoT.Edge.Contracts.Plc.Store;
 using IIoT.Edge.Domain.Hardware.Aggregates;
-using IIoT.Edge.Tasks.Context;
 
 namespace IIoT.Edge.Module.Hardware.Plc;
 

@@ -1,7 +1,6 @@
 ﻿using IIoT.Edge.Common.Context;
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts.Context;
-using IIoT.Edge.Tasks.Context;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -41,24 +40,29 @@ public class MonitorWidget : WidgetBase
 
     private void Refresh()
     {
+        // 1. 获取当前所有运行中的生产上下文
         var contexts = _contextStore.GetAll();
 
-        var currentIds = contexts.Select(c => c.DeviceId).ToHashSet();
-        var removeList = DeviceTabs.Where(d => !currentIds.Contains(d.DeviceId)).ToList();
+        // 2. 优化：使用 DeviceName 作为唯一标识进行同步
+        var currentNames = contexts.Select(c => c.DeviceName).ToHashSet();
+
+        // 移除已经不存在的设备 Tab
+        var removeList = DeviceTabs.Where(d => !currentNames.Contains(d.DeviceName)).ToList();
         foreach (var item in removeList)
             DeviceTabs.Remove(item);
 
+        // 3. 更新或新增设备 Tab
         foreach (var ctx in contexts)
         {
-            var tab = DeviceTabs.FirstOrDefault(d => d.DeviceId == ctx.DeviceId);
+            // 优化：按 DeviceName 查找
+            var tab = DeviceTabs.FirstOrDefault(d => d.DeviceName == ctx.DeviceName);
             if (tab is null)
             {
-                tab = new DeviceTabVm { DeviceId = ctx.DeviceId };
+                tab = new DeviceTabVm { DeviceName = ctx.DeviceName };
                 DeviceTabs.Add(tab);
             }
 
-            tab.DeviceName = ctx.DeviceName;
-
+            // 更新汇总信息
             var deviceInfo = string.Join("  ",
                 ctx.DeviceBag.OrderBy(kv => kv.Key)
                     .Select(kv => $"{kv.Key}={FormatValue(kv.Value)}"));
@@ -73,18 +77,12 @@ public class MonitorWidget : WidgetBase
         }
     }
 
-    /// <summary>
-    /// 从 CurrentCells 构建 DataTable
-    /// 强类型属性自动变成列，不用再手动收集 key
-    /// </summary>
     private static DataTable BuildCellTable(ProductionContext ctx)
     {
         var table = new DataTable();
+        if (ctx.CurrentCells.Count == 0) return table;
 
-        if (ctx.CurrentCells.Count == 0)
-            return table;
-
-        // 取第一颗电芯的类型，用反射获取所有属性作为列
+        // 通过反射获取电芯属性作为列名
         var firstCell = ctx.CurrentCells.Values.First();
         var properties = firstCell.GetType()
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -95,17 +93,14 @@ public class MonitorWidget : WidgetBase
         foreach (var prop in properties)
             table.Columns.Add(prop.Name, typeof(string));
 
-        // 填充行
         foreach (var cell in ctx.CurrentCells.Values)
         {
             var row = table.NewRow();
-
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(cell);
                 row[prop.Name] = FormatValue(value);
             }
-
             table.Rows.Add(row);
         }
 
@@ -127,8 +122,7 @@ public class MonitorWidget : WidgetBase
 
 public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
 {
-    public int DeviceId { get; set; }
-
+    // 优化：移除 DeviceId，统一使用 DeviceName
     private string _deviceName = "";
     public string DeviceName
     {
