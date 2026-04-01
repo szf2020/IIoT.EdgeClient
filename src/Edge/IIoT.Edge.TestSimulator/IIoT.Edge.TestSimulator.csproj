@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>IIoT.Edge.TestSimulator</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Shared\IIoT.Edge.Contracts\IIoT.Edge.Contracts.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Dapper\IIoT.Edge.Infrastructure.Dapper.csproj" />
+    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks\IIoT.Edge.Tasks.csproj" />
+    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks.DataPipeline\IIoT.Edge.Tasks.DataPipeline.csproj" />
+  </ItemGroup>
+
+</Project>

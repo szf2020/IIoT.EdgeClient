@@ -5,7 +5,7 @@
   </Folder>
   <Folder Name="/src/Edge/">
     <Project Path="src/Edge/IIoT.Edge.Shell/IIoT.Edge.Shell.csproj" Id="18446b65-38e5-4acb-a229-ba0f9d8a83cf" />
-  </Folder>
+      <Project Path="src/Edge/IIoT.Edge.TestSimulator/IIoT.Edge.TestSimulator.csproj" />$n  </Folder>
   <Folder Name="/src/Infrastructure/">
     <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
     <Project Path="src/Infrastructure/IIoT.Edge.DataMapping/IIoT.Edge.DataMapping.csproj" Id="26244124-df47-4905-9d4d-5e75a1d691f5" />

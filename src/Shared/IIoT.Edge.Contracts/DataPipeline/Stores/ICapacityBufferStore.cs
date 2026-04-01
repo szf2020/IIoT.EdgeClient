@@ -17,6 +17,20 @@ public class BufferSummaryDto
 }
 
 /// <summary>
+/// 离线缓冲小时汇总 DTO（补传时按 日期+小时+班次 汇总）
+/// </summary>
+public class BufferHourlySummaryDto
+{
+    public string Date { get; set; } = string.Empty;
+    public int Hour { get; set; }
+    public int MinuteBucket { get; set; }
+    public string ShiftCode { get; set; } = string.Empty;
+    public int Total { get; set; }
+    public int OkCount { get; set; }
+    public int NgCount { get; set; }
+}
+
+/// <summary>
 /// 产能离线缓冲接口
 /// 
 /// 只在 Offline 时写入，Online 后汇总补传，成功后清空
@@ -30,9 +44,14 @@ public interface ICapacityBufferStore
     Task SaveAsync(CapacityRecord record);
 
     /// <summary>
-    /// 按日期+班次汇总（RetryTask 补传时用）
+    /// 按日期+班次汇总（兼容旧补传）
     /// </summary>
     Task<List<BufferSummaryDto>> GetShiftSummaryAsync();
+
+    /// <summary>
+    /// 按日期+小时+班次汇总（小时补传）
+    /// </summary>
+    Task<List<BufferHourlySummaryDto>> GetHourlySummaryAsync();
 
     /// <summary>
     /// 补传成功后清空

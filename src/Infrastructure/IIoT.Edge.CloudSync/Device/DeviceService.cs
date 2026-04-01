@@ -27,8 +27,8 @@ public class DeviceService : IDeviceService
     private CancellationTokenSource? _cts;
     private Task? _heartbeatTask;
 
-    private static readonly TimeSpan OnlineInterval = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan OfflineInterval = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan OnlineInterval = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan OfflineInterval = TimeSpan.FromSeconds(10);
 
     private static readonly string CacheFile =
         Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "device_cache.json");

@@ -1,0 +1,461 @@
+2026-04-01 10:40:53.980 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 10:40:54.008 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 10:40:54.009 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 10:40:54.063 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 10:40:54.065 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:40:54.065 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:40:54.078 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 10:40:54.079 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 10:40:56.091 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 10:40:56.599 [INFO] PLC任务体系初始化完成
+2026-04-01 10:40:57.896 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 10:40:57.896 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 10:40:57.906 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 10:40:57.906 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 10:40:58.184 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 10:40:58.215 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 10:41:01.293 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 10:41:01.356 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 10:41:26.113 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:41:34.749 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 10:41:50.406 [INFO] ProcessQueueTask 已停止
+2026-04-01 10:41:50.406 [INFO] RetryTask[MES] 已停止
+2026-04-01 10:41:50.491 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 10:41:50.561 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:41:50.603 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 10:41:50.763 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 10:41:50.837 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 10:41:50.943 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:41:50.957 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 10:43:05.984 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 10:43:06.002 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 10:43:06.005 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 10:43:06.089 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 10:43:06.092 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:43:06.093 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:43:06.107 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 10:43:06.107 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 10:43:08.632 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 10:43:08.997 [INFO] PLC任务体系初始化完成
+2026-04-01 10:43:09.857 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 10:43:09.859 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 10:43:09.859 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 10:43:09.859 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 10:43:10.003 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 10:43:10.191 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 10:43:12.991 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 10:43:13.056 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 10:43:30.563 [INFO] ProcessQueueTask 已停止
+2026-04-01 10:43:30.563 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 10:43:30.563 [INFO] RetryTask[MES] 已停止
+2026-04-01 10:43:30.649 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 10:43:30.662 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 10:43:30.676 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:43:30.764 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 10:43:30.803 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:43:30.877 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 10:46:14.677 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 10:46:14.706 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 10:46:14.707 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 10:46:14.780 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 10:46:14.784 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:46:14.784 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:46:14.800 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 10:46:14.800 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 10:46:17.640 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 10:46:17.951 [INFO] PLC任务体系初始化完成
+2026-04-01 10:46:18.958 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 10:46:18.960 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 10:46:18.960 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 10:46:18.960 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 10:46:19.029 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 10:46:19.173 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 10:46:21.970 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 10:46:22.032 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 10:46:47.661 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:46:52.390 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 10:46:54.739 [INFO] [重传-Cloud] OFFLINE-001 补传成功，已从重传队列移除
+2026-04-01 10:46:54.757 [INFO] [重传-Cloud] OFFLINE-002 补传成功，已从重传队列移除
+2026-04-01 10:46:54.793 [INFO] [重传-Cloud] OFFLINE-003 补传成功，已从重传队列移除
+2026-04-01 10:46:54.808 [INFO] [重传-Cloud] OFFLINE-004 补传成功，已从重传队列移除
+2026-04-01 10:46:54.849 [INFO] [重传-Cloud] OFFLINE-005 补传成功，已从重传队列移除
+2026-04-01 10:46:54.974 [INFO] [重传-Cloud] 产能缓冲补传完成，已清空 1 条汇总
+2026-04-01 10:47:17.792 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:47:32.111 [INFO] RetryTask[MES] 已停止
+2026-04-01 10:47:32.153 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 10:47:32.153 [INFO] ProcessQueueTask 已停止
+2026-04-01 10:47:32.204 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:47:32.241 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 10:47:32.425 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 10:47:32.544 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 10:47:32.724 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:47:32.730 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 10:52:43.955 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 10:52:43.972 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 10:52:43.973 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 10:52:44.035 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 10:52:44.038 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:52:44.038 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 10:52:44.049 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 10:52:44.049 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 10:52:46.099 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 10:52:46.428 [INFO] PLC任务体系初始化完成
+2026-04-01 10:52:47.285 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 10:52:47.314 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 10:52:47.314 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 10:52:47.314 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 10:52:47.722 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 10:52:47.823 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 10:52:50.412 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 10:52:50.424 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 10:53:16.107 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:53:20.613 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 10:53:46.128 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:54:16.164 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:54:46.187 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:55:00.245 [INFO] ProcessQueueTask 已停止
+2026-04-01 10:55:00.308 [INFO] RetryTask[MES] 已停止
+2026-04-01 10:55:00.308 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 10:55:00.313 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:55:00.538 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 10:55:00.599 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 10:55:00.658 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 10:55:00.709 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 10:55:00.788 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 13:09:30.163 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 13:09:30.194 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 13:09:30.195 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 13:09:30.267 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 13:09:30.269 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 13:09:30.270 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 13:09:30.279 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 13:09:30.279 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 13:09:32.650 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 13:09:32.933 [INFO] PLC任务体系初始化完成
+2026-04-01 13:09:33.765 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 13:09:33.794 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 13:09:33.794 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 13:09:33.795 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 13:09:33.883 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 13:09:34.009 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 13:09:36.938 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 13:09:36.967 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 13:09:59.963 [INFO] RetryTask[MES] 已停止
+2026-04-01 13:09:59.963 [INFO] ProcessQueueTask 已停止
+2026-04-01 13:09:59.997 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 13:10:00.114 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 13:10:00.129 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 13:10:00.141 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:10:00.295 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 13:10:00.354 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:10:00.428 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 13:11:33.632 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 13:11:33.664 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 13:11:33.664 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 13:11:33.765 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 13:11:33.770 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 13:11:33.771 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 13:11:33.790 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 13:11:33.791 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 13:11:36.451 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 13:11:36.865 [INFO] PLC任务体系初始化完成
+2026-04-01 13:11:37.672 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 13:11:37.704 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 13:11:37.704 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 13:11:37.704 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 13:11:37.841 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 13:11:38.041 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 13:11:38.134 [INFO] [DeviceService] 设备信息更新: 测试开发设备 (00155D9E7ADC)
+2026-04-01 13:11:38.151 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 13:12:04.800 [INFO] [Recipe] 云端配方拉取成功: test开发设备 V1.0，参数 2 个
+2026-04-01 13:12:06.457 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:12:36.462 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:13:06.489 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:13:28.522 [INFO] RetryTask[MES] 已停止
+2026-04-01 13:13:28.561 [INFO] ProcessQueueTask 已停止
+2026-04-01 13:13:28.561 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 13:13:28.626 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:13:28.653 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 13:13:28.714 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 13:13:28.852 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 13:13:28.895 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 13:13:29.022 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 14:03:32.930 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 14:03:32.959 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 14:03:32.964 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 14:03:33.052 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 14:03:33.054 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:03:33.054 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:03:33.069 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 14:03:33.069 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 14:03:35.501 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 14:03:35.840 [INFO] PLC任务体系初始化完成
+2026-04-01 14:03:36.626 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 14:03:36.628 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 14:03:36.628 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 14:03:36.628 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 14:03:36.683 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 14:03:36.798 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 14:03:36.946 [INFO] [DeviceService] 设备信息更新: 测试开发设备 (00155D9E7ADC)
+2026-04-01 14:03:36.948 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 14:04:05.509 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:04:19.513 [INFO] RetryTask[MES] 已停止
+2026-04-01 14:04:19.519 [INFO] ProcessQueueTask 已停止
+2026-04-01 14:04:19.560 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 14:04:19.593 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 14:04:19.599 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:04:19.606 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 14:04:19.768 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 14:04:19.832 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:04:19.837 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 14:05:30.856 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 14:05:30.893 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 14:05:30.894 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 14:05:30.967 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 14:05:30.970 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:05:30.971 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:05:30.982 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 14:05:30.982 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 14:05:33.112 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 14:05:33.507 [INFO] PLC任务体系初始化完成
+2026-04-01 14:05:34.269 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 14:05:34.275 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 14:05:34.275 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 14:05:34.275 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 14:05:34.661 [INFO] [DeviceService] 设备信息更新: 测试开发设备 (00155D9E7ADC)
+2026-04-01 14:05:34.982 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 14:05:35.153 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 14:05:35.171 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 14:06:03.117 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:06:22.936 [INFO] ProcessQueueTask 已停止
+2026-04-01 14:06:22.986 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 14:06:22.986 [INFO] RetryTask[MES] 已停止
+2026-04-01 14:06:23.046 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:06:23.046 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 14:06:23.070 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 14:06:23.547 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 14:06:23.588 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:06:23.630 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 14:06:29.145 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 14:06:29.168 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 14:06:29.169 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 14:06:29.250 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 14:06:29.253 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:06:29.253 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:06:29.268 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 14:06:29.268 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 14:06:31.389 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 14:06:31.726 [INFO] PLC任务体系初始化完成
+2026-04-01 14:06:32.477 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 14:06:32.479 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 14:06:32.479 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 14:06:32.479 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 14:06:32.747 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 14:06:32.760 [INFO] [DeviceService] 设备信息更新: 测试开发设备 (00155D9E7ADC)
+2026-04-01 14:06:32.868 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 14:06:32.918 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 14:06:48.651 [INFO] ProcessQueueTask 已停止
+2026-04-01 14:06:48.672 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 14:06:48.673 [INFO] RetryTask[MES] 已停止
+2026-04-01 14:06:48.705 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 14:06:48.735 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 14:06:48.744 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:06:48.876 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 14:06:48.926 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:06:48.934 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 14:26:51.968 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 14:26:51.977 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 14:26:51.977 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 14:26:52.044 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 14:26:52.046 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:26:52.046 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 14:26:52.056 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 14:26:52.056 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 14:26:53.976 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 14:26:54.255 [INFO] PLC任务体系初始化完成
+2026-04-01 14:26:55.050 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 14:26:55.079 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 14:26:55.079 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 14:26:55.079 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 14:26:55.281 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 14:26:55.295 [INFO] [DeviceService] 设备信息更新: 测试开发设备 (00155D9E7ADC)
+2026-04-01 14:26:55.744 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 14:26:55.776 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 14:27:21.434 [INFO] ProcessQueueTask 已停止
+2026-04-01 14:27:21.434 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 14:27:21.468 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 14:27:21.434 [INFO] RetryTask[MES] 已停止
+2026-04-01 14:27:21.524 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 14:27:21.533 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:27:21.846 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 14:27:21.900 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 14:27:22.012 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 15:31:49.271 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 15:31:49.296 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 15:31:49.297 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 15:31:49.397 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 15:31:49.400 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:31:49.400 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:31:49.414 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 15:31:49.414 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 15:31:52.169 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 15:31:52.757 [INFO] PLC任务体系初始化完成
+2026-04-01 15:31:53.985 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 15:31:54.030 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 15:31:54.031 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 15:31:54.031 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 15:31:54.170 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 15:31:54.341 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 15:32:58.882 [WARN] [DeviceService] 云端寻址失败: BadRequest  MAC码：00155D9E7ADC
+2026-04-01 15:32:58.897 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:32:58.973 [INFO] [DeviceService] 加载本地缓存: 测试开发设备
+2026-04-01 15:33:09.136 [INFO] [DeviceService] 设备信息更新: 开发测试机 (00155D9E7ADC)
+2026-04-01 15:33:09.208 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 15:33:14.237 [INFO] [重传-Cloud] OFFLINE-001-3356 补传成功，已从重传队列移除
+2026-04-01 15:33:14.254 [INFO] [重传-Cloud] OFFLINE-002-3403 补传成功，已从重传队列移除
+2026-04-01 15:33:14.274 [INFO] [重传-Cloud] OFFLINE-003-4491 补传成功，已从重传队列移除
+2026-04-01 15:33:14.304 [INFO] [重传-Cloud] OFFLINE-004-9001 补传成功，已从重传队列移除
+2026-04-01 15:33:14.335 [INFO] [重传-Cloud] OFFLINE-005-5325 补传成功，已从重传队列移除
+2026-04-01 15:33:14.447 [INFO] [重传-Cloud] 产能缓冲半小时补传完成，已清空 1 条汇总
+2026-04-01 15:33:19.480 [INFO] [重传-Cloud] OFFLINE-006-1358 补传成功，已从重传队列移除
+2026-04-01 15:33:19.487 [INFO] [重传-Cloud] OFFLINE-007-8847 补传成功，已从重传队列移除
+2026-04-01 15:33:19.538 [INFO] [重传-Cloud] OFFLINE-008-3607 补传成功，已从重传队列移除
+2026-04-01 15:33:19.584 [INFO] [重传-Cloud] OFFLINE-009-7361 补传成功，已从重传队列移除
+2026-04-01 15:33:19.616 [INFO] [重传-Cloud] OFFLINE-010-2112 补传成功，已从重传队列移除
+2026-04-01 15:33:24.644 [INFO] [重传-Cloud] OFFLINE-011-5813 补传成功，已从重传队列移除
+2026-04-01 15:33:24.652 [INFO] [重传-Cloud] OFFLINE-012-9607 补传成功，已从重传队列移除
+2026-04-01 15:33:28.990 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:33:58.998 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:34:29.035 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:34:59.045 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:35:29.055 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:35:59.070 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:36:12.719 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:36:12.719 [INFO] [DeviceService] 状态切换 → Offline
+2026-04-01 15:36:25.880 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:36:29.105 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:36:39.005 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:36:52.157 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:36:59.111 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:37:05.478 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:37:18.760 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:37:29.126 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:37:31.891 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:37:45.114 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:37:58.338 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:37:59.144 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:38:11.495 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:38:24.626 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:38:29.155 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:38:37.806 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:38:50.956 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:38:59.328 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:39:04.132 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:39:17.252 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:39:29.415 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:39:30.386 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:39:43.648 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:39:56.844 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:39:59.431 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:40:10.044 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:40:23.214 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:40:29.448 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:40:36.448 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:40:49.583 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:40:59.468 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:41:02.720 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:41:15.863 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:41:29.009 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:41:29.471 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:41:42.240 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:41:55.349 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:41:59.477 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:42:08.517 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:42:21.655 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:42:29.487 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:42:34.758 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:42:47.866 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:42:59.490 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:43:00.959 [WARN] [DeviceService] 云端寻址超时
+2026-04-01 15:43:10.330 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 15:43:10.330 [INFO] RetryTask[MES] 已停止
+2026-04-01 15:43:10.330 [INFO] ProcessQueueTask 已停止
+2026-04-01 15:43:10.401 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 15:43:10.407 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:43:10.412 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 15:43:10.519 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 15:43:10.562 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:43:10.753 [INFO] [Lifecycle] 所有服务已停止
+2026-04-01 15:56:54.248 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 15:56:54.282 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 15:56:54.282 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 15:56:54.358 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 15:56:54.360 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:56:54.361 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:56:54.371 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 15:56:54.371 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 15:56:56.512 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 15:56:56.836 [INFO] PLC任务体系初始化完成
+2026-04-01 15:57:22.710 [INFO] [Dapper] 表 capacity_buffer 初始化完成（pipeline.db）
+2026-04-01 15:57:22.741 [INFO] [Dapper] 表 device_log_buffer 初始化完成（pipeline.db）
+2026-04-01 15:57:22.742 [INFO] [Dapper] 表 failed_cell_records 初始化完成（pipeline.db）
+2026-04-01 15:57:22.849 [INFO] [ContextStore] 已恢复 2 台设备的生产上下文
+2026-04-01 15:57:22.853 [INFO]   [test] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:57:22.853 [INFO]   [test2] 在制电芯: 0个, 步骤: 无, 当天产能: 白班=0/夜班=0
+2026-04-01 15:57:22.872 [INFO] [Recipe] 配方加载完成: 云端 2 个参数，本地 0 个参数
+2026-04-01 15:57:22.873 [INFO] [Lifecycle] 生产上下文 + 配方数据已加载
+2026-04-01 15:57:25.314 [INFO] [DeviceService] 心跳循环启动
+2026-04-01 15:57:25.658 [INFO] PLC任务体系初始化完成
+2026-04-01 15:57:26.768 [INFO] [CapacitySync] 产能同步启动，间隔 60 秒
+2026-04-01 15:57:26.798 [INFO] ProcessQueueTask 启动，执行间隔: 50ms
+2026-04-01 15:57:26.798 [INFO] RetryTask[Cloud] 启动，执行间隔: 5000ms
+2026-04-01 15:57:26.798 [INFO] RetryTask[MES] 启动，执行间隔: 5000ms
+2026-04-01 15:57:27.100 [INFO] [DeviceService] 设备信息更新: 设备开发机 (00155D9E7ADC)
+2026-04-01 15:57:27.102 [INFO] [DeviceLogSync] 日志同步启动，间隔 60 秒
+2026-04-01 15:57:27.224 [INFO] [DeviceService] 状态切换 → Online
+2026-04-01 15:57:27.247 [INFO] [Lifecycle] 所有后台服务已启动
+2026-04-01 15:57:32.593 [INFO] [重传-Cloud] OFFLINE-001-3356 补传成功，已从重传队列移除
+2026-04-01 15:57:32.725 [INFO] [重传-Cloud] OFFLINE-002-3403 补传成功，已从重传队列移除
+2026-04-01 15:57:32.813 [INFO] [重传-Cloud] OFFLINE-003-4491 补传成功，已从重传队列移除
+2026-04-01 15:57:32.830 [INFO] [重传-Cloud] OFFLINE-004-9001 补传成功，已从重传队列移除
+2026-04-01 15:57:32.909 [INFO] [重传-Cloud] OFFLINE-005-5325 补传成功，已从重传队列移除
+2026-04-01 15:57:32.960 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:57:38.042 [INFO] [重传-Cloud] OFFLINE-006-1358 补传成功，已从重传队列移除
+2026-04-01 15:57:38.154 [INFO] [重传-Cloud] OFFLINE-007-8847 补传成功，已从重传队列移除
+2026-04-01 15:57:38.246 [INFO] [重传-Cloud] OFFLINE-008-3607 补传成功，已从重传队列移除
+2026-04-01 15:57:38.324 [INFO] [重传-Cloud] OFFLINE-009-7361 补传成功，已从重传队列移除
+2026-04-01 15:57:38.408 [INFO] [重传-Cloud] OFFLINE-010-2112 补传成功，已从重传队列移除
+2026-04-01 15:57:38.439 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:57:43.492 [INFO] [重传-Cloud] OFFLINE-011-5813 补传成功，已从重传队列移除
+2026-04-01 15:57:43.546 [INFO] [重传-Cloud] OFFLINE-012-9607 补传成功，已从重传队列移除
+2026-04-01 15:57:43.571 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:57:48.603 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:57:53.618 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:57:55.325 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:57:58.648 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:03.675 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:08.709 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:13.737 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:18.792 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:23.849 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:25.383 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:58:28.857 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:33.870 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:38.927 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:43.978 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:48.991 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:54.007 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:58:55.390 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:58:59.064 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:59:04.070 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:59:09.115 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:59:14.149 [WARN] [重传-Cloud] 产能半小时补传失败 2026-04-01 15:30/D
+2026-04-01 15:59:17.394 [INFO] ProcessQueueTask 已停止
+2026-04-01 15:59:17.451 [INFO] RetryTask[MES] 已停止
+2026-04-01 15:59:17.419 [INFO] RetryTask[Cloud] 已停止
+2026-04-01 15:59:17.455 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:59:17.655 [INFO] [DeviceService] 心跳循环停止
+2026-04-01 15:59:17.655 [INFO] [CapacitySync] 产能同步已停止
+2026-04-01 15:59:17.681 [INFO] [Lifecycle] 生产上下文 + 配方数据已保存
+2026-04-01 15:59:17.742 [INFO] [ContextStore] 已保存 2 台设备的生产上下文
+2026-04-01 15:59:17.849 [INFO] [Lifecycle] 所有服务已停止

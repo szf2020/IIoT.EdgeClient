@@ -1,4 +1,5 @@
-﻿using IIoT.Edge.Contracts;
+﻿using IIoT.Edge.Common.DataPipeline.Capacity;
+using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
@@ -23,6 +24,7 @@ public class CapacitySyncTask : ICapacitySyncTask
     private readonly IProductionContextStore _contextStore;
     private readonly ICapacityBufferStore _bufferStore;
     private readonly ILogService _logger;
+    private readonly ShiftConfig _shiftConfig;
 
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
@@ -34,13 +36,15 @@ public class CapacitySyncTask : ICapacitySyncTask
         IDeviceService deviceService,
         IProductionContextStore contextStore,
         ICapacityBufferStore bufferStore,
-        ILogService logger)
+        ILogService logger,
+        ShiftConfig shiftConfig)
     {
         _cloudHttp = cloudHttp;
         _deviceService = deviceService;
         _contextStore = contextStore;
         _bufferStore = bufferStore;
         _logger = logger;
+        _shiftConfig = shiftConfig;
     }
 
     public Task StartAsync(CancellationToken ct)
@@ -109,49 +113,57 @@ public class CapacitySyncTask : ICapacitySyncTask
             if (string.IsNullOrEmpty(capacity.Date) || capacity.TotalAll == 0)
                 continue;
 
-            if (capacity.DayShift.Total > 0)
+            foreach (var slot in capacity.HalfHourly.Where(h => h.Total > 0).OrderBy(h => h.SlotIndex))
             {
-                await PostCapacityAsync(cloudDeviceId,
-                    capacity.Date, "D",
-                    capacity.DayShift.Total,
-                    capacity.DayShift.OkCount,
-                    capacity.DayShift.NgCount,
-                    ctx.DeviceName);
-            }
-
-            if (capacity.NightShift.Total > 0)
-            {
-                await PostCapacityAsync(cloudDeviceId,
-                    capacity.Date, "N",
-                    capacity.NightShift.Total,
-                    capacity.NightShift.OkCount,
-                    capacity.NightShift.NgCount,
+                var shiftCode = GetShiftCodeByTime(slot.StartHour, slot.StartMinute);
+                await PostHalfHourCapacityAsync(
+                    cloudDeviceId,
+                    capacity.Date,
+                    slot.StartHour,
+                    slot.StartMinute,
+                    shiftCode,
+                    slot.Total,
+                    slot.OkCount,
+                    slot.NgCount,
                     ctx.DeviceName);
             }
         }
     }
 
-    private async Task PostCapacityAsync(
-        Guid deviceId, string date, string shiftCode,
+    private async Task PostHalfHourCapacityAsync(
+        Guid deviceId, string date, int hour, int minute, string shiftCode,
         int totalCount, int okCount, int ngCount,
         string logLabel)
     {
-        var payload = new { deviceId, date, shiftCode, totalCount, okCount, ngCount };
+        var endMinute = minute == 30 ? 0 : 30;
+        var endHour = minute == 30 ? (hour + 1) % 24 : hour;
 
-        var success = await _cloudHttp.PostAsync("/api/v1/Capacity/daily", payload);
+        var payload = new
+        {
+            deviceId,
+            date,
+            hour,
+            minute,
+            timeLabel = $"{hour:D2}:{minute:D2}-{endHour:D2}:{endMinute:D2}",
+            shiftCode,
+            totalCount,
+            okCount,
+            ngCount
+        };
+
+        var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
 
         if (success)
-            _logger.Info($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步成功: " +
-                $"总={totalCount}, OK={okCount}, NG={ngCount}");
+            _logger.Info($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步成功: 总={totalCount}, OK={okCount}, NG={ngCount}");
         else
-            _logger.Warn($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步失败");
+            _logger.Warn($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步失败");
     }
 
     // ── RetryTask 调用：补传离线缓冲 ─────────────────────────
 
     public async Task<bool> RetryBufferAsync()
     {
-        var summaries = await _bufferStore.GetShiftSummaryAsync().ConfigureAwait(false);
+        var summaries = await _bufferStore.GetHourlySummaryAsync().ConfigureAwait(false);
         if (summaries.Count == 0)
             return true;
 
@@ -160,26 +172,39 @@ public class CapacitySyncTask : ICapacitySyncTask
 
         foreach (var s in summaries)
         {
+            var endMinute = s.MinuteBucket == 30 ? 0 : 30;
+            var endHour = s.MinuteBucket == 30 ? (s.Hour + 1) % 24 : s.Hour;
+
             var payload = new
             {
                 deviceId = device.DeviceId,
                 date = s.Date,
+                hour = s.Hour,
+                minute = s.MinuteBucket,
+                timeLabel = $"{s.Hour:D2}:{s.MinuteBucket:D2}-{endHour:D2}:{endMinute:D2}",
                 shiftCode = s.ShiftCode,
                 totalCount = s.Total,
                 okCount = s.OkCount,
                 ngCount = s.NgCount
             };
 
-            var success = await _cloudHttp.PostAsync("/api/v1/Capacity/daily", payload);
+            var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
             if (!success)
             {
-                _logger.Warn($"[重传-Cloud] 产能补传失败 {s.Date}/{s.ShiftCode}");
+                _logger.Warn($"[重传-Cloud] 产能半小时补传失败 {s.Date} {s.Hour:D2}:{s.MinuteBucket:D2}/{s.ShiftCode}");
                 return false;
             }
         }
 
         await _bufferStore.ClearAllAsync().ConfigureAwait(false);
-        _logger.Info($"[重传-Cloud] 产能缓冲补传完成，已清空 {summaries.Count} 条汇总");
+        _logger.Info($"[重传-Cloud] 产能缓冲半小时补传完成，已清空 {summaries.Count} 条汇总");
         return true;
+    }
+
+    private string GetShiftCodeByTime(int hour, int minute)
+    {
+        var t = new TimeSpan(hour, minute, 0);
+        var isDay = t >= _shiftConfig.DayStartTime && t < _shiftConfig.DayEndTime;
+        return isDay ? "D" : "N";
     }
 }
