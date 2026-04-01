@@ -1,4 +1,4 @@
-ï»¿using IIoT.Edge.Common.Mvvm;
+using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Contracts.Plc.Store;
 using IIoT.Edge.Domain.Hardware.Aggregates;
@@ -13,7 +13,7 @@ namespace IIoT.Edge.Module.Hardware.IOView;
 public class IOViewWidget : WidgetBase
 {
     public override string WidgetId => "Hardware.IOView";
-    public override string WidgetName => "IOäº¤äº’";
+    public override string WidgetName => "IO½»»¥";
 
     private readonly IPlcDataStore _dataStore;
     private readonly ISender _sender;
@@ -43,7 +43,7 @@ public class IOViewWidget : WidgetBase
         set { _isConnected = value; OnPropertyChanged(); }
     }
 
-    private string _statusText = "æœªè¿žæŽ¥";
+    private string _statusText = "Î´Á¬½Ó";
     public string StatusText
     {
         get => _statusText;
@@ -158,13 +158,13 @@ public class IOViewWidget : WidgetBase
         if (SelectedDevice is null)
         {
             IsConnected = false;
-            StatusText = "æœªé€‰æ‹©è®¾å¤‡";
+            StatusText = "Î´Ñ¡ÔñÉè±¸";
             return;
         }
 
         var hasBuffer = _dataStore.HasDevice(SelectedDevice.Id);
         IsConnected = hasBuffer;
-        StatusText = hasBuffer ? "å·²è¿žæŽ¥" : "æœªè¿žæŽ¥";
+        StatusText = hasBuffer ? "ÒÑÁ¬½Ó" : "Î´Á¬½Ó";
     }
     public override async Task OnActivatedAsync()
     {

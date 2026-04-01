@@ -3,6 +3,7 @@ using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
+using IIoT.Edge.Contracts.DataPipeline.SyncTask;
 using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.Tasks.Base;
 using System.Text.Json;
@@ -10,21 +11,14 @@ using System.Text.Json;
 namespace IIoT.Edge.Tasks.DataPipeline.Tasks;
 
 /// <summary>
-/// 通道补传任务
+/// 云端重传调度中心
 /// 
-/// 按 channel 实例化，每个通道一个实例：
-///   CloudRetryTask → channel="Cloud"，依赖 DeviceService Online/Offline
-///   MesRetryTask   → channel="MES"，后期依赖 MES 网络状态
+/// 按 channel 实例化，Cloud 通道串行调度三类补传：
+///   ① 失败的生产数据（消费链重试）
+///   ② 积压的设备日志（委托 IDeviceLogSyncTask.RetryBufferAsync）
+///   ③ 积压的产能缓冲（委托 ICapacitySyncTask.RetryBufferAsync）
 /// 
-/// 定时从 SQLite 捞出对应通道的失败记录：
-///   根据 ProcessType 反序列化 CellDataJson → 具体子类
-///   包装成 CellCompletedRecord，从 FailedTarget 那步继续消费
-/// 
-/// 退避策略：
-///   1-5次   → 30秒后重试
-///   6-10次  → 5分钟后重试
-///   11-20次 → 30分钟后重试
-///   20次以上 → 停止自动重传
+/// 自身不做 HTTP 请求，只负责调度顺序和在线判断
 /// </summary>
 public class RetryTask : ScheduledTaskBase
 {
@@ -32,6 +26,10 @@ public class RetryTask : ScheduledTaskBase
     private readonly IFailedRecordStore _failedStore;
     private readonly IDeviceService _deviceService;
     private readonly List<ICellDataConsumer> _consumers;
+
+    // Cloud 通道专用：日志和产能补传委托
+    private readonly IDeviceLogSyncTask? _deviceLogSync;
+    private readonly ICapacitySyncTask? _capacitySync;
 
     private const int MaxRetryCount = 20;
 
@@ -49,25 +47,44 @@ public class RetryTask : ScheduledTaskBase
         ILogService logger,
         IFailedRecordStore failedStore,
         IDeviceService deviceService,
-        IEnumerable<ICellDataConsumer> consumers)
+        IEnumerable<ICellDataConsumer> consumers,
+        IDeviceLogSyncTask? deviceLogSync = null,
+        ICapacitySyncTask? capacitySync = null)
         : base(logger)
     {
         _channel = channel;
         _failedStore = failedStore;
         _deviceService = deviceService;
         _consumers = consumers.OrderBy(c => c.Order).ToList();
+        _deviceLogSync = deviceLogSync;
+        _capacitySync = capacitySync;
     }
 
     protected override async Task ExecuteAsync()
     {
-        // Cloud 通道：Offline 时跳过
-        if (_channel == "Cloud" && _deviceService.CurrentState == NetworkState.Offline)
+        // Cloud 通道：Offline 或无 DeviceId 时跳过
+        if (_channel == "Cloud" &&
+            (_deviceService.CurrentState == NetworkState.Offline || !_deviceService.HasDeviceId))
             return;
 
-        // MES 通道：后期加 MES 网络状态判断
-        // if (_channel == "MES" && _mesService.CurrentState == MesState.Offline)
-        //     return;
+        // ① 重传失败的生产数据
+        await RetryFailedCellRecordsAsync();
 
+        // ② 重传积压的设备日志（仅 Cloud 通道）
+        if (_channel == "Cloud" && _deviceLogSync is not null)
+            await _deviceLogSync.RetryBufferAsync();
+
+        // ③ 重传积压的产能缓冲（仅 Cloud 通道）
+        if (_channel == "Cloud" && _capacitySync is not null)
+            await _capacitySync.RetryBufferAsync();
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  ① 生产数据重传（消费链重试）
+    // ══════════════════════════════════════════════════════
+
+    private async Task RetryFailedCellRecordsAsync()
+    {
         var records = await _failedStore
             .GetPendingAsync(_channel, batchSize: 5)
             .ConfigureAwait(false);
@@ -91,7 +108,6 @@ public class RetryTask : ScheduledTaskBase
             return;
         }
 
-        // 反序列化 CellDataJson → 强类型 CellData
         var cellData = DeserializeCellData(record.ProcessType, record.CellDataJson);
         if (cellData is null)
         {
@@ -103,12 +119,10 @@ public class RetryTask : ScheduledTaskBase
         var completedRecord = new CellCompletedRecord { CellData = cellData };
         var label = cellData.DisplayLabel;
 
-        // 从失败的消费者开始，只重试同通道的消费者
         for (int i = startIndex; i < _consumers.Count; i++)
         {
             var consumer = _consumers[i];
 
-            // 跳过不属于本通道的消费者
             if (consumer.RetryChannel != _channel)
                 continue;
 
@@ -163,10 +177,6 @@ public class RetryTask : ScheduledTaskBase
         return TimeSpan.FromMinutes(30);
     }
 
-    /// <summary>
-    /// 根据 ProcessType 反序列化 CellDataJson → 具体子类
-    /// 新增设备类型在 switch 里加一行 case
-    /// </summary>
     private CellDataBase? DeserializeCellData(string processType, string json)
     {
         try
@@ -174,7 +184,6 @@ public class RetryTask : ScheduledTaskBase
             return processType switch
             {
                 "Injection" => JsonSerializer.Deserialize<InjectionCellData>(json, _jsonOptions),
-                // "DieCutting" => JsonSerializer.Deserialize<DieCuttingCellData>(json, _jsonOptions),
                 _ => null
             };
         }

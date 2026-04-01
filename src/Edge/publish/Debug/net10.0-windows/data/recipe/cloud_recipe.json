@@ -1,0 +1,26 @@
+{
+  "recipeId": "7bcfce0c-b1f4-49f8-aac5-8bb5064e7950",
+  "recipeName": "test\u5F00\u53D1\u8BBE\u5907",
+  "version": "V1.0",
+  "processName": "",
+  "status": "Active",
+  "updatedAt": "2026-03-31 13:43:54",
+  "parameters": {
+    "\u7535\u538B": {
+      "id": "d8f05f9d-7950-4d80-9c35-5a225fe2e74a",
+      "name": "\u7535\u538B",
+      "min": 2.3,
+      "max": 3.7,
+      "unit": "\u4F0F\u7279",
+      "customValue": null
+    },
+    "\u5185\u963B": {
+      "id": "12b965b5-25b2-48ef-b216-1147ad980cb1",
+      "name": "\u5185\u963B",
+      "min": 1,
+      "max": 3,
+      "unit": "\u6BEB\u6B27",
+      "customValue": null
+    }
+  }
+}

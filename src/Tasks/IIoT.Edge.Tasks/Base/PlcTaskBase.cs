@@ -75,14 +75,18 @@ public abstract class PlcTaskBase : IPlcTask
             try
             {
                 await DoCoreAsync();
+                await Task.Delay(TaskLoopInterval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
                 Logger.Error($"[{Context.DeviceName}] {TaskName} 异常: {ex.Message}");
-                await Task.Delay(ErrorRetryInterval, ct);
+                try { await Task.Delay(ErrorRetryInterval, ct); }
+                catch (OperationCanceledException) { break; }
             }
-
-            await Task.Delay(TaskLoopInterval, ct);
         }
 
         Logger.Info($"[{Context.DeviceName}] {TaskName} 已停止");

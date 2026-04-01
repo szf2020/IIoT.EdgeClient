@@ -40,8 +40,18 @@ namespace IIoT.Edge.Module.Production.Equipment.Models
             set { _unit = value; OnPropertyChanged(); }
         }
 
-        // 预留字段
-        public string WarnLow => "--";
-        public string WarnHigh => "--";
+        private string _warnLow = "--";
+        public string WarnLow
+        {
+            get => _warnLow;
+            set { _warnLow = value; OnPropertyChanged(); }
+        }
+
+        private string _warnHigh = "--";
+        public string WarnHigh
+        {
+            get => _warnHigh;
+            set { _warnHigh = value; OnPropertyChanged(); }
+        }
     }
 }

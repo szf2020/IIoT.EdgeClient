@@ -54,7 +54,6 @@ public class MonitorWidget : WidgetBase
         // 3. 更新或新增设备 Tab
         foreach (var ctx in contexts)
         {
-            // 优化：按 DeviceName 查找
             var tab = DeviceTabs.FirstOrDefault(d => d.DeviceName == ctx.DeviceName);
             if (tab is null)
             {
@@ -62,7 +61,25 @@ public class MonitorWidget : WidgetBase
                 DeviceTabs.Add(tab);
             }
 
-            // 更新汇总信息
+            // ── 产能数据 ──────────────────────────────────
+            var cap = ctx.TodayCapacity;
+
+            tab.DayShiftOk = cap.DayShift.OkCount;
+            tab.DayShiftNg = cap.DayShift.NgCount;
+            tab.DayShiftTotal = cap.DayShift.Total;
+            tab.DayShiftYield = cap.DayShift.Yield;
+
+            tab.NightShiftOk = cap.NightShift.OkCount;
+            tab.NightShiftNg = cap.NightShift.NgCount;
+            tab.NightShiftTotal = cap.NightShift.Total;
+            tab.NightShiftYield = cap.NightShift.Yield;
+
+            tab.TotalAll = cap.TotalAll;
+            tab.OkAll = cap.OkAll;
+            tab.NgAll = cap.NgAll;
+            tab.YieldAll = cap.YieldAll;
+
+            // ── 设备数据汇总 ──────────────────────────────
             var deviceInfo = string.Join("  ",
                 ctx.DeviceBag.OrderBy(kv => kv.Key)
                     .Select(kv => $"{kv.Key}={FormatValue(kv.Value)}"));
@@ -82,7 +99,6 @@ public class MonitorWidget : WidgetBase
         var table = new DataTable();
         if (ctx.CurrentCells.Count == 0) return table;
 
-        // 通过反射获取电芯属性作为列名
         var firstCell = ctx.CurrentCells.Values.First();
         var properties = firstCell.GetType()
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -122,7 +138,7 @@ public class MonitorWidget : WidgetBase
 
 public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
 {
-    // 优化：移除 DeviceId，统一使用 DeviceName
+    // ── 设备标识 ──────────────────────────────────
     private string _deviceName = "";
     public string DeviceName
     {
@@ -130,6 +146,94 @@ public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
         set { _deviceName = value; OnPropertyChanged(); }
     }
 
+    // ── 产能：白班 ────────────────────────────────
+    private int _dayShiftOk;
+    public int DayShiftOk
+    {
+        get => _dayShiftOk;
+        set { _dayShiftOk = value; OnPropertyChanged(); }
+    }
+
+    private int _dayShiftNg;
+    public int DayShiftNg
+    {
+        get => _dayShiftNg;
+        set { _dayShiftNg = value; OnPropertyChanged(); }
+    }
+
+    private int _dayShiftTotal;
+    public int DayShiftTotal
+    {
+        get => _dayShiftTotal;
+        set { _dayShiftTotal = value; OnPropertyChanged(); }
+    }
+
+    private string _dayShiftYield = "0%";
+    public string DayShiftYield
+    {
+        get => _dayShiftYield;
+        set { _dayShiftYield = value; OnPropertyChanged(); }
+    }
+
+    // ── 产能：夜班 ────────────────────────────────
+    private int _nightShiftOk;
+    public int NightShiftOk
+    {
+        get => _nightShiftOk;
+        set { _nightShiftOk = value; OnPropertyChanged(); }
+    }
+
+    private int _nightShiftNg;
+    public int NightShiftNg
+    {
+        get => _nightShiftNg;
+        set { _nightShiftNg = value; OnPropertyChanged(); }
+    }
+
+    private int _nightShiftTotal;
+    public int NightShiftTotal
+    {
+        get => _nightShiftTotal;
+        set { _nightShiftTotal = value; OnPropertyChanged(); }
+    }
+
+    private string _nightShiftYield = "0%";
+    public string NightShiftYield
+    {
+        get => _nightShiftYield;
+        set { _nightShiftYield = value; OnPropertyChanged(); }
+    }
+
+    // ── 产能：合计 ────────────────────────────────
+    private int _totalAll;
+    public int TotalAll
+    {
+        get => _totalAll;
+        set { _totalAll = value; OnPropertyChanged(); }
+    }
+
+    private int _okAll;
+    public int OkAll
+    {
+        get => _okAll;
+        set { _okAll = value; OnPropertyChanged(); }
+    }
+
+    private int _ngAll;
+    public int NgAll
+    {
+        get => _ngAll;
+        set { _ngAll = value; OnPropertyChanged(); }
+    }
+
+    private string _yieldAll = "0%";
+    public string YieldAll
+    {
+        get => _yieldAll;
+        set { _yieldAll = value; OnPropertyChanged(); }
+    }
+
+    // ── 原有属性 ──────────────────────────────────
     private string _deviceDataSummary = "暂无数据";
     public string DeviceDataSummary
     {

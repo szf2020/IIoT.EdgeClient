@@ -1,31 +1,27 @@
-using IIoT.Edge.Contracts.Context;
-using IIoT.Edge.Contracts.DataPipeline;
-using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.Infrastructure;
 using IIoT.Edge.Infrastructure.Dapper;
-using IIoT.Edge.Module.Hardware.Plc;
 using IIoT.Edge.Shell.Core;
-using IIoT.Edge.Tasks.DataPipeline;
 using IIoT.Edge.UI.Shared.Modularity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
+using System.Threading;
 using System.Windows;
 
 namespace IIoT.Edge.Shell;
 
 public partial class App : Application
 {
-    public IServiceProvider ServiceProvider { get; private set; } = null!;
-
+    private IServiceProvider _sp = null!;
     private CancellationTokenSource _appCts = new();
+    private Mutex? _instanceMutex;
 
     public App()
     {
         _ = typeof(MaterialDesignThemes.Wpf.BundledTheme).Assembly;
     }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -34,36 +30,87 @@ public partial class App : Application
             .AddJsonFile("appsettings.json", optional: false)
             .Build();
 
-        var services = ConfigureServices(configuration);
-        ServiceProvider = services.BuildServiceProvider();
-        InitializeInfrastructure();
+        // ── 唯一性校验 ─────────────────────────────────
+        if (!TryAcquireInstanceLock(configuration))
+        {
+            Shutdown();
+            return;
+        }
 
-        var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+        // ── DI 构建 ────────────────────────────────────
+        _sp = ConfigureServices(configuration).BuildServiceProvider();
+
+        // ── 基础设施初始化 ─────────────────────────────
+        _sp.ApplyMigrations();
+
+        try
+        {
+            await _sp.InitializeDapperTablesAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"数据库初始化失败，程序无法启动。\n\n{ex.Message}",
+                "IIoT 客户端 - 启动错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown();
+            return;
+        }
+
+        // ── 生命周期管理 ──────────────────────────────
+        var lifecycle = _sp.GetRequiredService<AppLifecycleManager>();
+        lifecycle.Initialize();
+
+        var mainWindow = _sp.GetRequiredService<MainWindow>();
         mainWindow.Show();
 
-        StartBackgroundServices();
+        lifecycle.StartAll(_sp, _appCts.Token);
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        // 保存生产上下文（含产能数据）
-        var contextStore = ServiceProvider.GetRequiredService<IProductionContextStore>();
-        contextStore.SaveToFile();
-
         _appCts.Cancel();
 
-        // 停止设备心跳
-        var deviceService = ServiceProvider.GetRequiredService<IDeviceService>();
-        deviceService.StopAsync().GetAwaiter().GetResult();
+        if (_sp is not null)
+        {
+            var lifecycle = _sp.GetRequiredService<AppLifecycleManager>();
+            lifecycle.Shutdown();
+        }
 
-        // 停止产能同步
-        var capacitySync = ServiceProvider.GetRequiredService<ICapacitySyncTask>();
-        capacitySync.StopAsync().GetAwaiter().GetResult();
-
-        var plcManager = ServiceProvider.GetRequiredService<PlcConnectionManager>();
-        plcManager.Dispose();
-
+        ReleaseMutex();
         base.OnExit(e);
+
+        // 强制杀进程，确保后台线程全部退出
+        Environment.Exit(0);
+    }
+
+    // ── 私有方法 ──────────────────────────────────────
+
+    private bool TryAcquireInstanceLock(IConfiguration configuration)
+    {
+        var instanceId = configuration["InstanceId"] ?? "IIoT-Edge-Default";
+        var mutexName = $"Global\\IIoT.EdgeClient_{instanceId}";
+
+        _instanceMutex = new Mutex(true, mutexName, out bool createdNew);
+        if (createdNew) return true;
+
+        MessageBox.Show(
+            $"实例 [{instanceId}] 已在运行中，不能重复启动。",
+            "IIoT 客户端",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+
+        _instanceMutex = null;
+        return false;
+    }
+
+    private void ReleaseMutex()
+    {
+        if (_instanceMutex is null) return;
+        _instanceMutex.ReleaseMutex();
+        _instanceMutex.Dispose();
+        _instanceMutex = null;
     }
 
     private ServiceCollection ConfigureServices(IConfiguration configuration)
@@ -82,41 +129,10 @@ public partial class App : Application
         return services;
     }
 
-    private void InitializeInfrastructure()
-    {
-        ServiceProvider.ApplyMigrations();
-        _ = ServiceProvider.InitializeDapperTablesAsync();
-
-        var contextStore = ServiceProvider.GetRequiredService<IProductionContextStore>();
-        contextStore.LoadFromFile();
-    }
-
-    private void StartBackgroundServices()
-    {
-        // 上下文自动保存
-        var contextStore = ServiceProvider.GetRequiredService<IProductionContextStore>();
-        _ = contextStore.StartAutoSaveAsync(_appCts.Token, intervalSeconds: 30);
-
-        // 设备心跳
-        var deviceService = ServiceProvider.GetRequiredService<IDeviceService>();
-        _ = deviceService.StartAsync(_appCts.Token);
-
-        // PLC 任务
-        _ = ServiceProvider.InitializePlcTasksAsync(_appCts.Token);
-
-        // 数据管道
-        _ = ServiceProvider.StartDataPipelineAsync(_appCts.Token);
-
-        // 产能定时同步（30分钟）
-        var capacitySync = ServiceProvider.GetRequiredService<ICapacitySyncTask>();
-        _ = capacitySync.StartAsync(_appCts.Token);
-    }
-
     private static string GetDbDirectory()
     {
         var dbDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "IIoT.Edge", "db");
+            AppDomain.CurrentDomain.BaseDirectory, "data", "db");
         Directory.CreateDirectory(dbDir);
         return dbDir;
     }

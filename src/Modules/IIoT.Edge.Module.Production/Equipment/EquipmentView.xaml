@@ -59,7 +59,7 @@
                     </DataGrid.CellStyle>
 
                     <DataGrid.Columns>
-                        <!--  状态  -->
+                        <!--  状态指示灯  -->
                         <DataGridTemplateColumn Width="50" Header="状态">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -71,6 +71,29 @@
                                             <SolidColorBrush Color="{Binding StatusColor}" />
                                         </Ellipse.Fill>
                                     </Ellipse>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!--  连接文字  -->
+                        <DataGridTemplateColumn Width="60" Header="连接">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        HorizontalAlignment="Center"
+                                        FontSize="11"
+                                        Text="{Binding StatusText}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="#F44336" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsConnected}" Value="True">
+                                                        <Setter Property="Foreground" Value="#4CAF50" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

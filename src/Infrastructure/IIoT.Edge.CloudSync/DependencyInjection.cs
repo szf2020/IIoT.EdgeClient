@@ -2,11 +2,16 @@
 using IIoT.Edge.CloudSync.Capacity;
 using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.CloudSync.Device;
+using IIoT.Edge.CloudSync.DeviceLog;
+using IIoT.Edge.CloudSync.Http;
 using IIoT.Edge.CloudSync.PassStation;
+using IIoT.Edge.CloudSync.Recipe;
 using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Consumers;
+using IIoT.Edge.Contracts.DataPipeline.SyncTask;
 using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.Contracts.Recipe;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -42,12 +47,13 @@ public static class DependencyInjection
         });
         services.AddSingleton<IDeviceService>(sp => sp.GetRequiredService<DeviceService>());
 
-        // ── 云端数据上报 HttpClient ────────────────────────────
+        // ── 云端通用 HttpClient ─────────────────────────────────
         services.AddHttpClient("CloudApi", client =>
         {
             client.BaseAddress = new Uri(baseUrl);
             client.Timeout = timeout;
         });
+        services.AddSingleton<ICloudHttpClient, CloudHttpClient>();
 
         // ── 云端上报消费者 ─────────────────────────────────────
         services.AddSingleton<ICloudConsumer, CloudConsumer>();
@@ -55,8 +61,14 @@ public static class DependencyInjection
         // ── 产能消费者 ─────────────────────────────────────────
         services.AddSingleton<ICapacityConsumer, CapacityConsumer>();
 
-        // ── 产能定时同步 ───────────────────────────────────────
+        // ── 产能定时同步（60秒）──────────────────────────────
         services.AddSingleton<ICapacitySyncTask, CapacitySyncTask>();
+
+        // ── 日志定时同步（60秒）──────────────────────────────
+        services.AddSingleton<IDeviceLogSyncTask, DeviceLogSyncTask>();
+
+        // ── 配方服务 ─────────────────────────────────────────
+        services.AddSingleton<IRecipeService, RecipeService>();
 
         return services;
     }

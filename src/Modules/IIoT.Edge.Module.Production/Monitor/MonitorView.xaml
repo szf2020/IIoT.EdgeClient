@@ -1,4 +1,4 @@
-﻿<!--  路径：src/Modules/IIoT.Edge.Module.Production/Monitor/MonitorViewPage.xaml  -->
+﻿<!--  路径：src/Modules/IIoT.Edge.Module.Production/Monitor/MonitorView.xaml  -->
 <UserControl
     x:Class="IIoT.Edge.Module.Production.Monitor.MonitorViewPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -47,13 +47,204 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="*" />
                         </Grid.RowDefinitions>
 
+                        <!--  ═══ 产能摘要卡片（新增） ═══  -->
+                        <UniformGrid
+                            Grid.Row="0"
+                            Margin="0,8,0,8"
+                            Columns="3">
+
+                            <!--  白班  -->
+                            <Border
+                                Margin="0,0,6,0"
+                                Padding="12,8"
+                                Background="#1E1E1E"
+                                CornerRadius="6">
+                                <StackPanel>
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="Medium"
+                                        Foreground="#F59E0B"
+                                        Text="☀ 白班" />
+                                    <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="合计" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#E4E4E7"
+                                                Text="{Binding DayShiftTotal}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="OK" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#22C55E"
+                                                Text="{Binding DayShiftOk}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="NG" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#EF4444"
+                                                Text="{Binding DayShiftNg}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="良率" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#F59E0B"
+                                                Text="{Binding DayShiftYield}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!--  夜班  -->
+                            <Border
+                                Margin="3,0"
+                                Padding="12,8"
+                                Background="#1E1E1E"
+                                CornerRadius="6">
+                                <StackPanel>
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="Medium"
+                                        Foreground="#818CF8"
+                                        Text="🌙 夜班" />
+                                    <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="合计" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#E4E4E7"
+                                                Text="{Binding NightShiftTotal}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="OK" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#22C55E"
+                                                Text="{Binding NightShiftOk}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="NG" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#EF4444"
+                                                Text="{Binding NightShiftNg}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="良率" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#818CF8"
+                                                Text="{Binding NightShiftYield}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!--  今日合计  -->
+                            <Border
+                                Margin="6,0,0,0"
+                                Padding="12,8"
+                                Background="#1E1E1E"
+                                CornerRadius="6">
+                                <StackPanel>
+                                    <TextBlock
+                                        FontSize="12"
+                                        FontWeight="Medium"
+                                        Foreground="#0EA5E9"
+                                        Text="📊 今日合计" />
+                                    <StackPanel Margin="0,6,0,0" Orientation="Horizontal">
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="合计" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#E4E4E7"
+                                                Text="{Binding TotalAll}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="OK" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#22C55E"
+                                                Text="{Binding OkAll}" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,16,0">
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="NG" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#EF4444"
+                                                Text="{Binding NgAll}" />
+                                        </StackPanel>
+                                        <StackPanel>
+                                            <TextBlock
+                                                FontSize="10"
+                                                Foreground="#71717A"
+                                                Text="良率" />
+                                            <TextBlock
+                                                FontSize="20"
+                                                FontWeight="Bold"
+                                                Foreground="#0EA5E9"
+                                                Text="{Binding YieldAll}" />
+                                        </StackPanel>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </UniformGrid>
+
                         <!--  状态机  -->
                         <Border
-                            Grid.Row="0"
-                            Margin="0,8,0,4"
+                            Grid.Row="1"
+                            Margin="0,0,0,4"
                             Padding="10,6"
                             Background="#18181B"
                             CornerRadius="4">
@@ -73,7 +264,7 @@
 
                         <!--  设备数据  -->
                         <Border
-                            Grid.Row="1"
+                            Grid.Row="2"
                             Margin="0,0,0,4"
                             Padding="10,6"
                             Background="#18181B"
@@ -95,7 +286,7 @@
 
                         <!--  电芯数量  -->
                         <TextBlock
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Margin="0,4,0,4"
                             FontSize="12"
                             Foreground="#71717A">
@@ -104,9 +295,9 @@
                             <Run Text=" 个" />
                         </TextBlock>
 
-                        <!--  电芯数据表格（DataGrid绑定DataTable，列自动生成）  -->
+                        <!--  电芯数据表格  -->
                         <DataGrid
-                            Grid.Row="3"
+                            Grid.Row="4"
                             AlternatingRowBackground="#252525"
                             AutoGenerateColumns="True"
                             Background="Transparent"

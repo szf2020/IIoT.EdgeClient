@@ -4,14 +4,17 @@ namespace IIoT.Edge.Contracts.DataPipeline.Stores;
 
 /// <summary>
 /// 离线缓冲汇总 DTO（补传时按 日期+班次 汇总）
+/// 
+/// 用 class + 无参构造，Dapper 映射 SQLite 聚合结果需要
 /// </summary>
-public record BufferSummaryDto(
-    string Date,
-    string ShiftCode,
-    int Total,
-    int OkCount,
-    int NgCount
-);
+public class BufferSummaryDto
+{
+    public string Date { get; set; } = string.Empty;
+    public string ShiftCode { get; set; } = string.Empty;
+    public int Total { get; set; }
+    public int OkCount { get; set; }
+    public int NgCount { get; set; }
+}
 
 /// <summary>
 /// 产能离线缓冲接口
@@ -27,7 +30,7 @@ public interface ICapacityBufferStore
     Task SaveAsync(CapacityRecord record);
 
     /// <summary>
-    /// 按日期+班次汇总（CapacitySyncTask 补传时用）
+    /// 按日期+班次汇总（RetryTask 补传时用）
     /// </summary>
     Task<List<BufferSummaryDto>> GetShiftSummaryAsync();
 

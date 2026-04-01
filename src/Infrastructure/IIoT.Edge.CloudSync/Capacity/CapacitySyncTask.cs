@@ -2,26 +2,23 @@
 using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
+using IIoT.Edge.Contracts.DataPipeline.SyncTask;
 using IIoT.Edge.Contracts.Device;
-using System.Net.Http.Json;
 
 namespace IIoT.Edge.CloudSync.Capacity;
 
 /// <summary>
 /// 产能定时同步任务
 /// 
-/// 30 分钟间隔，对齐整点/半点
+/// 60 秒间隔
+/// 实时上传：在线时 POST 每台设备的当天产能快照
+/// 失败 → 不处理（CapacityConsumer 离线时已写缓冲，RetryTask 补传）
 /// 
-/// 两个数据源：
-///   1. 遍历所有设备的 ProductionContext.TodayCapacity → 当天实时产能
-///   2. CapacityBufferStore → 断网期间积压的记录
-/// 
-/// Online 时：POST 每台设备的白班+夜班产能 + 补传离线缓冲
-/// Offline 时：跳过
+/// RetryBufferAsync：由 RetryTask 调用，补传 SQLite 中积压的产能缓冲
 /// </summary>
 public class CapacitySyncTask : ICapacitySyncTask
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ICloudHttpClient _cloudHttp;
     private readonly IDeviceService _deviceService;
     private readonly IProductionContextStore _contextStore;
     private readonly ICapacityBufferStore _bufferStore;
@@ -30,16 +27,16 @@ public class CapacitySyncTask : ICapacitySyncTask
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
 
-    private static readonly TimeSpan SyncInterval = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
 
     public CapacitySyncTask(
-        IHttpClientFactory httpClientFactory,
+        ICloudHttpClient cloudHttp,
         IDeviceService deviceService,
         IProductionContextStore contextStore,
         ICapacityBufferStore bufferStore,
         ILogService logger)
     {
-        _httpClientFactory = httpClientFactory;
+        _cloudHttp = cloudHttp;
         _deviceService = deviceService;
         _contextStore = contextStore;
         _bufferStore = bufferStore;
@@ -50,6 +47,7 @@ public class CapacitySyncTask : ICapacitySyncTask
     {
         _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         _loopTask = Task.Run(() => SyncLoopAsync(_cts.Token), _cts.Token);
+        _logger.Info("[CapacitySync] 产能同步启动，间隔 60 秒");
         return Task.CompletedTask;
     }
 
@@ -70,18 +68,10 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     private async Task SyncLoopAsync(CancellationToken ct)
     {
-        _logger.Info("[CapacitySync] 产能同步启动，间隔 30 分钟");
-
         while (!ct.IsCancellationRequested)
         {
-            try
-            {
-                await Task.Delay(SyncInterval, ct);
-            }
-            catch (OperationCanceledException)
-            {
-                break;
-            }
+            try { await Task.Delay(SyncInterval, ct); }
+            catch (OperationCanceledException) { break; }
 
             await ExecuteOnceAsync();
         }
@@ -100,13 +90,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
         try
         {
-            var client = _httpClientFactory.CreateClient("CloudApi");
-
-            // 1. 遍历所有设备，同步各自的内存快照
-            await SyncAllDevicesAsync(client, device.DeviceId);
-
-            // 2. 补传离线缓冲
-            await FlushBufferAsync(client, device.DeviceId);
+            await SyncAllDevicesAsync(device.DeviceId);
         }
         catch (Exception ex)
         {
@@ -114,10 +98,7 @@ public class CapacitySyncTask : ICapacitySyncTask
         }
     }
 
-    /// <summary>
-    /// 遍历所有 PLC 设备，逐台上传当天产能
-    /// </summary>
-    private async Task SyncAllDevicesAsync(HttpClient client, Guid cloudDeviceId)
+    private async Task SyncAllDevicesAsync(Guid cloudDeviceId)
     {
         var contexts = _contextStore.GetAll();
 
@@ -130,7 +111,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
             if (capacity.DayShift.Total > 0)
             {
-                await PostCapacityAsync(client, cloudDeviceId,
+                await PostCapacityAsync(cloudDeviceId,
                     capacity.Date, "D",
                     capacity.DayShift.Total,
                     capacity.DayShift.OkCount,
@@ -140,7 +121,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
             if (capacity.NightShift.Total > 0)
             {
-                await PostCapacityAsync(client, cloudDeviceId,
+                await PostCapacityAsync(cloudDeviceId,
                     capacity.Date, "N",
                     capacity.NightShift.Total,
                     capacity.NightShift.OkCount,
@@ -150,79 +131,55 @@ public class CapacitySyncTask : ICapacitySyncTask
         }
     }
 
-    /// <summary>
-    /// 补传离线缓冲 → 按日期+班次汇总后 POST → 成功后清空
-    /// </summary>
-    private async Task FlushBufferAsync(HttpClient client, Guid cloudDeviceId)
-    {
-        var summaries = await _bufferStore.GetShiftSummaryAsync().ConfigureAwait(false);
-
-        if (summaries.Count == 0)
-            return;
-
-        var allSuccess = true;
-        foreach (var s in summaries)
-        {
-            var success = await PostCapacityAsync(client, cloudDeviceId,
-                s.Date, s.ShiftCode, s.Total, s.OkCount, s.NgCount, "离线缓冲");
-
-            if (!success)
-            {
-                allSuccess = false;
-                break;
-            }
-        }
-
-        if (allSuccess)
-        {
-            await _bufferStore.ClearAllAsync().ConfigureAwait(false);
-            _logger.Info($"[CapacitySync] 离线缓冲补传完成，已清空 {summaries.Count} 条汇总");
-        }
-    }
-
-    private async Task<bool> PostCapacityAsync(
-        HttpClient client, Guid deviceId,
-        string date, string shiftCode,
+    private async Task PostCapacityAsync(
+        Guid deviceId, string date, string shiftCode,
         int totalCount, int okCount, int ngCount,
         string logLabel)
     {
-        var payload = new
-        {
-            deviceId,
-            date,
-            shiftCode,
-            totalCount,
-            okCount,
-            ngCount
-        };
+        var payload = new { deviceId, date, shiftCode, totalCount, okCount, ngCount };
 
-        try
-        {
-            var response = await client
-                .PostAsJsonAsync("/api/v1/Capacity/daily", payload)
-                .ConfigureAwait(false);
+        var success = await _cloudHttp.PostAsync("/api/v1/Capacity/daily", payload);
 
-            if (response.IsSuccessStatusCode)
+        if (success)
+            _logger.Info($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步成功: " +
+                $"总={totalCount}, OK={okCount}, NG={ngCount}");
+        else
+            _logger.Warn($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步失败");
+    }
+
+    // ── RetryTask 调用：补传离线缓冲 ─────────────────────────
+
+    public async Task<bool> RetryBufferAsync()
+    {
+        var summaries = await _bufferStore.GetShiftSummaryAsync().ConfigureAwait(false);
+        if (summaries.Count == 0)
+            return true;
+
+        var device = _deviceService.CurrentDevice;
+        if (device is null) return false;
+
+        foreach (var s in summaries)
+        {
+            var payload = new
             {
-                _logger.Info($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步成功: " +
-                    $"总={totalCount}, OK={okCount}, NG={ngCount}");
-                return true;
-            }
+                deviceId = device.DeviceId,
+                date = s.Date,
+                shiftCode = s.ShiftCode,
+                totalCount = s.Total,
+                okCount = s.OkCount,
+                ngCount = s.NgCount
+            };
 
-            var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            _logger.Warn($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步失败: " +
-                $"{response.StatusCode}, {body}");
-            return false;
+            var success = await _cloudHttp.PostAsync("/api/v1/Capacity/daily", payload);
+            if (!success)
+            {
+                _logger.Warn($"[重传-Cloud] 产能补传失败 {s.Date}/{s.ShiftCode}");
+                return false;
+            }
         }
-        catch (TaskCanceledException)
-        {
-            _logger.Warn($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 同步超时");
-            return false;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.Warn($"[CapacitySync] [{logLabel}] {date}/{shiftCode} 网络异常: {ex.Message}");
-            return false;
-        }
+
+        await _bufferStore.ClearAllAsync().ConfigureAwait(false);
+        _logger.Info($"[重传-Cloud] 产能缓冲补传完成，已清空 {summaries.Count} 条汇总");
+        return true;
     }
 }

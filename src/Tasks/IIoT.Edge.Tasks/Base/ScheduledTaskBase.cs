@@ -82,14 +82,18 @@ public abstract class ScheduledTaskBase : IPlcTask
             try
             {
                 await ExecuteAsync();
+                await Task.Delay(ExecuteInterval, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
                 Logger.Error($"{deviceInfo}{TaskName} 异常: {ex.Message}");
-                await Task.Delay(ErrorRetryInterval, ct);
+                try { await Task.Delay(ErrorRetryInterval, ct); }
+                catch (OperationCanceledException) { break; }
             }
-
-            await Task.Delay(ExecuteInterval, ct);
         }
 
         Logger.Info($"{deviceInfo}{TaskName} 已停止");

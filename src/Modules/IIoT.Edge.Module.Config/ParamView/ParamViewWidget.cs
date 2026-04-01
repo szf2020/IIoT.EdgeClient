@@ -1,9 +1,7 @@
 ﻿using AutoMapper;
 using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Common.Repository;
 using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Domain.Config.Aggregates;
-using IIoT.Edge.Domain.Hardware.Aggregates;
 using IIoT.Edge.Module.Config.ParamView.Models;
 using IIoT.Edge.Module.Config.UseCases.DeviceParam.Commands;
 using IIoT.Edge.Module.Config.UseCases.DeviceParam.Queries;
@@ -22,7 +20,6 @@ public class ParamViewWidget : WidgetBase
     public override string WidgetName => "参数配置";
 
     private readonly ISender _sender;
-    private readonly IReadRepository<NetworkDeviceEntity> _networkDevices;
     private readonly IMapper _mapper;
 
     private int _selectedTabIndex;
@@ -55,11 +52,9 @@ public class ParamViewWidget : WidgetBase
 
     public ParamViewWidget(
         ISender sender,
-        IReadRepository<NetworkDeviceEntity> networkDevices,
         IMapper mapper)
     {
         _sender = sender;
-        _networkDevices = networkDevices;
         _mapper = mapper;
 
         SaveCommand = new AsyncCommand(SaveAsync);

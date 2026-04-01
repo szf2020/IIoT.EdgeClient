@@ -15,7 +15,6 @@ using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using IIoT.Edge.Module.Formula;
 using IIoT.Edge.Module.Hardware;
 using IIoT.Edge.Module.Hardware.HardwareConfigView.Mappings;
-using IIoT.Edge.Module.Hardware.Plc;
 using IIoT.Edge.Module.Production;
 using IIoT.Edge.Module.SysLog;
 using IIoT.Edge.PlcDevice;
@@ -51,8 +50,7 @@ public static class DependencyInjection
 
         // ── 基础设施层 ──────────────────────────────
         var excelDir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "IIoT.Edge", "excel");
+            AppDomain.CurrentDomain.BaseDirectory, "data", "excel");
         services.AddInfrastructure(efDbPath);
         services.AddDapperInfrastructure(dbDir);
         services.AddExcelInfrastructure(excelDir);
@@ -91,6 +89,7 @@ public static class DependencyInjection
             cfg.AddProfile<ConfigMappingProfile>();
             cfg.AddProfile<InjectionCloudProfile>();
         });
+        services.AddSingleton<AppLifecycleManager>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 
@@ -103,7 +102,7 @@ public static class DependencyInjection
     public static async Task InitializePlcTasksAsync(
         this IServiceProvider sp, CancellationToken ct = default)
     {
-        var plcManager = sp.GetRequiredService<PlcConnectionManager>();
+        var plcManager = sp.GetRequiredService<IPlcConnectionManager>();
         var logService = sp.GetRequiredService<ILogService>();
 
         await plcManager.InitializeAsync(ct);
