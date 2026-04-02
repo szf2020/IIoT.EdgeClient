@@ -1,3 +1,4 @@
+using IIoT.Edge.Common.DataPipeline.Capacity;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Consumers;
@@ -34,7 +35,6 @@ public partial class App : Application
 
         await _sp.InitializeDapperTablesAsync();
 
-        // 启动队列消费后台任务（贯穿整个 App 生命周期）
         var processQueue = _sp.GetRequiredService<ProcessQueueTask>();
         _ = processQueue.StartAsync(_appCts.Token);
 
@@ -51,10 +51,9 @@ public partial class App : Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        // ── 测试 DB 目录（发布目录下 data 文件夹，方便查看） ─────────────
         var testDbDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
 
-        // ── Fakes（替换外部边界） ───────────────────────────────
+        // ── Fakes ────────────────────────────────────────────────
         services.AddSingleton<FakeHttpClient>();
         services.AddSingleton<ICloudHttpClient>(sp => sp.GetRequiredService<FakeHttpClient>());
 
@@ -73,10 +72,17 @@ public partial class App : Application
         services.AddSingleton<FakeDeviceLogSyncTask>();
         services.AddSingleton<IDeviceLogSyncTask>(sp => sp.GetRequiredService<FakeDeviceLogSyncTask>());
 
-        // ── 真实 Dapper Store（测真实落库） ─────────────────────
+        // ── 真实 Dapper Store ────────────────────────────────────
         services.AddDapperInfrastructure(testDbDir);
 
-        // ── 消费者（Order=10 产能 / Order=30 云端） ──────────────
+        // ── ShiftConfig（历史数据场景需要用到）───────────────────
+        services.AddSingleton(new ShiftConfig
+        {
+            DayStart = "08:30",
+            DayEnd = "20:30"
+        });
+
+        // ── 消费者 ───────────────────────────────────────────────
         services.AddSingleton<SimCapacityConsumer>();
         services.AddSingleton<ICapacityConsumer>(sp => sp.GetRequiredService<SimCapacityConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICapacityConsumer>());
@@ -88,10 +94,9 @@ public partial class App : Application
         // ── DataPipeline 核心 ────────────────────────────────────
         services.AddSingleton<DataPipelineService>();
         services.AddSingleton<IDataPipelineService>(sp => sp.GetRequiredService<DataPipelineService>());
-
         services.AddSingleton<ProcessQueueTask>();
 
-        // ── TestRetryTask（可手动触发的 Cloud 通道重传） ──────────
+        // ── TestRetryTask ────────────────────────────────────────
         services.AddSingleton<TestRetryTask>(sp => new TestRetryTask(
             sp.GetRequiredService<ILogService>(),
             sp.GetRequiredService<IFailedRecordStore>(),
@@ -100,14 +105,14 @@ public partial class App : Application
             sp.GetRequiredService<IDeviceLogSyncTask>(),
             sp.GetRequiredService<ICapacitySyncTask>()));
 
-        // ── 辅助服务 ────────────────────────────────────────────
+        // ── 辅助服务 ─────────────────────────────────────────────
         services.AddSingleton<SimDataHelper>();
 
         // ── 场景 ─────────────────────────────────────────────────
         services.AddSingleton<OnlinePassScenario>();
         services.AddSingleton<OfflineBufferScenario>();
         services.AddSingleton<RetryScenario>();
-        services.AddSingleton<RandomPipelineScenario>();
+        services.AddSingleton<HistoricalDataScenario>();  // 新增历史数据场景
         services.AddSingleton<ScenarioRunner>();
 
         // ── Views ────────────────────────────────────────────────

@@ -2,14 +2,16 @@
 
 /// <summary>
 /// 当天产能快照（内存模型）
-/// 
+///
 /// 跟随 ProductionContext 一起 JSON 持久化
-/// 跨天时自动清零（Increment 前检查 Date）
+/// 日期归属按生产日（Production Day）计算：
+///   生产日 08:30 开始，次日 08:30 结束
+///   00:00-08:30 之间发生的生产归属前一个自然日
 /// </summary>
 public class TodayCapacity
 {
     /// <summary>
-    /// 当前统计日期（yyyy-MM-dd），跨天检测用
+    /// 当前生产日日期（yyyy-MM-dd），跨天检测用
     /// </summary>
     public string Date { get; set; } = string.Empty;
 
@@ -30,19 +32,27 @@ public class TodayCapacity
         : "0%";
 
     /// <summary>
-    /// 计数 +1，自动判定班次，自动跨天清零
+    /// 计数 +1，自动判定班次，按生产日归属日期
+    /// 00:00-DayStart 之间的生产归属前一自然日（仍是当晚夜班）
     /// </summary>
-    /// <returns>本次归属的班次编码："D"=白班, "N"=夜班</returns>
+    /// <returns>本次归属的班次编码：D=白班, N=夜班</returns>
     public string Increment(DateTime completedTime, bool isOk,
         TimeSpan dayStart, TimeSpan dayEnd)
     {
-        var currentDate = completedTime.Date.ToString("yyyy-MM-dd");
+        // ── 生产日归属：00:00-DayStart 归属前一自然日 ──────────────
+        var productionDate = completedTime.TimeOfDay < dayStart
+            ? completedTime.Date.AddDays(-1)
+            : completedTime.Date;
+
+        var currentDate = productionDate.ToString("yyyy-MM-dd");
+
         if (Date != currentDate)
         {
             Reset();
             Date = currentDate;
         }
 
+        // ── 班次判定：白班 DayStart-DayEnd，其余夜班 ──────────────
         var time = completedTime.TimeOfDay;
         var isDayShift = time >= dayStart && time < dayEnd;
         var shift = isDayShift ? DayShift : NightShift;
@@ -52,6 +62,7 @@ public class TodayCapacity
         else
             shift.NgCount++;
 
+        // ── 半小时桶 ──────────────────────────────────────────────
         if (HalfHourly.Count == 0)
             HalfHourly = CreateHalfHourBuckets();
 
@@ -73,7 +84,7 @@ public class TodayCapacity
     }
 
     /// <summary>
-    /// 清零（跨天 / 手动重置）
+    /// 清零（跨生产日 / 手动重置）
     /// </summary>
     public void Reset()
     {
@@ -116,11 +127,7 @@ public class ShiftCapacity
     public ShiftCapacity() { }
     public ShiftCapacity(string shiftCode) { ShiftCode = shiftCode; }
 
-    /// <summary>
-    /// 班次编码：D=白班, N=夜班
-    /// </summary>
     public string ShiftCode { get; set; } = string.Empty;
-
     public int OkCount { get; set; }
     public int NgCount { get; set; }
 

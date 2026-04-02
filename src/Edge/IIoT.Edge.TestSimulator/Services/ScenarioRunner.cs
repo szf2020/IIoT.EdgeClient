@@ -5,49 +5,50 @@ using IIoT.Edge.TestSimulator.Scenarios;
 namespace IIoT.Edge.TestSimulator.Services;
 
 /// <summary>
-/// 按顺序执行三个场景，汇总断言结果
+/// 场景执行器
+/// 支持执行全部场景或按名称选择执行
 /// </summary>
 public sealed class ScenarioRunner
 {
-    private readonly OnlinePassScenario     _scenario1;
-    private readonly OfflineBufferScenario  _scenario2;
-    private readonly RetryScenario          _scenario3;
-    private readonly RandomPipelineScenario _scenario4;
-    private readonly SimDataHelper          _dataHelper;
-    private readonly FakeHttpClient         _httpClient;
-    private readonly FakeDeviceService      _deviceService;
+    private readonly OnlinePassScenario _scenario1;
+    private readonly OfflineBufferScenario _scenario2;
+    private readonly RetryScenario _scenario3;
+    private readonly HistoricalDataScenario _scenario4;
+    private readonly SimDataHelper _dataHelper;
+    private readonly FakeHttpClient _httpClient;
+    private readonly FakeDeviceService _deviceService;
     private readonly FakeTodayCapacityStore _capacityStore;
-    private readonly ILogService            _logger;
+    private readonly ILogService _logger;
     private readonly IReadOnlyList<ITestScenario> _allScenarios;
 
     public ScenarioRunner(
-        OnlinePassScenario     scenario1,
-        OfflineBufferScenario  scenario2,
-        RetryScenario          scenario3,
-        RandomPipelineScenario scenario4,
-        SimDataHelper          dataHelper,
-        FakeHttpClient         httpClient,
-        FakeDeviceService      deviceService,
+        OnlinePassScenario scenario1,
+        OfflineBufferScenario scenario2,
+        RetryScenario scenario3,
+        HistoricalDataScenario scenario4,
+        SimDataHelper dataHelper,
+        FakeHttpClient httpClient,
+        FakeDeviceService deviceService,
         FakeTodayCapacityStore capacityStore,
-        ILogService            logger)
+        ILogService logger)
     {
-        _scenario1     = scenario1;
-        _scenario2     = scenario2;
-        _scenario3     = scenario3;
-        _scenario4     = scenario4;
-        _dataHelper    = dataHelper;
-        _httpClient    = httpClient;
+        _scenario1 = scenario1;
+        _scenario2 = scenario2;
+        _scenario3 = scenario3;
+        _scenario4 = scenario4;
+        _dataHelper = dataHelper;
+        _httpClient = httpClient;
         _deviceService = deviceService;
         _capacityStore = capacityStore;
-        _logger        = logger;
+        _logger = logger;
         _allScenarios = [_scenario1, _scenario2, _scenario3, _scenario4];
     }
 
-    /// <summary>顺序执行全部场景，返回结果列表</summary>
+    /// <summary>顺序执行全部场景</summary>
     public Task<List<ScenarioResult>> RunAllAsync(CancellationToken ct = default)
         => RunInternalAsync(_allScenarios, resetBeforeRun: true, ct);
 
-    /// <summary>按选择执行场景（顺序仍按 1→2→3），可控制运行前是否清库</summary>
+    /// <summary>按选择执行场景</summary>
     public Task<List<ScenarioResult>> RunSelectedAsync(
         IReadOnlyCollection<string> selectedScenarioNames,
         bool resetBeforeRun,
@@ -59,6 +60,10 @@ public sealed class ScenarioRunner
 
         return RunInternalAsync(selected, resetBeforeRun, ct);
     }
+
+    /// <summary>获取所有场景名称（UI 绑定用）</summary>
+    public IReadOnlyList<string> GetAllScenarioNames()
+        => _allScenarios.Select(s => s.Name).ToList();
 
     private async Task<List<ScenarioResult>> RunInternalAsync(
         IReadOnlyList<ITestScenario> scenarios,
@@ -77,7 +82,11 @@ public sealed class ScenarioRunner
         _logger.Info("    IIoT Edge 集成测试模拟器  开始运行");
         _logger.Info("══════════════════════════════════════════════");
 
-        if (resetBeforeRun)
+        // 历史数据场景不需要清库（它直接上传云端，不依赖本地状态）
+        var needReset = resetBeforeRun
+            && scenarios.Any(s => s is not HistoricalDataScenario);
+
+        if (needReset)
         {
             await _dataHelper.ClearAllAsync();
             _capacityStore.ResetAll();
@@ -100,9 +109,9 @@ public sealed class ScenarioRunner
                 _logger.Error($"[ScenarioRunner] {scenario.Name} 未捕获异常: {ex.Message}");
                 result = new ScenarioResult
                 {
-                    Name   = scenario.Name,
+                    Name = scenario.Name,
                     Passed = false,
-                    Error  = ex.Message
+                    Error = ex.Message
                 };
             }
 
@@ -126,7 +135,7 @@ public sealed class ScenarioRunner
         return results;
     }
 
-    /// <summary>清空 SQLite 测试数据并重置内存状态</summary>
+    /// <summary>清空测试数据并重置内存状态</summary>
     public async Task ResetAsync()
     {
         await _dataHelper.ClearAllAsync();

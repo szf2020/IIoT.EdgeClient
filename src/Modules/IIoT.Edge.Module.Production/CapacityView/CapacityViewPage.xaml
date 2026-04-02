@@ -5,18 +5,14 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
     Background="Transparent">
-    <UserControl.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-    </UserControl.Resources>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="280" />
         </Grid.RowDefinitions>
 
+        <!--  顶部：标题 + 设备选择 + 日期筛选 + 操作  -->
         <Border Grid.Row="0" Padding="16,12">
             <Grid>
                 <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
@@ -27,6 +23,7 @@
                         Foreground="#E4E4E7"
                         Text="产能查询" />
 
+                    <!--  设备选择（新增）  -->
                     <TextBlock
                         Margin="0,0,6,0"
                         VerticalAlignment="Center"
@@ -34,25 +31,28 @@
                         Foreground="#A1A1AA"
                         Text="设备：" />
                     <ComboBox
-                        Width="150"
-                        Margin="0,0,12,0"
+                        Width="140"
+                        Margin="0,0,16,0"
                         FontSize="12"
                         ItemsSource="{Binding DeviceNames}"
                         SelectedItem="{Binding SelectedDeviceName}" />
 
-                    <ComboBox
-                        Width="120"
-                        Margin="0,0,12,0"
+                    <!--  日期范围  -->
+                    <DatePicker
+                        Width="130"
+                        Margin="0,0,8,0"
                         FontSize="12"
-                        ItemsSource="{Binding QueryModes}"
-                        SelectedItem="{Binding SelectedQueryMode}" />
-
+                        SelectedDate="{Binding DateFrom}" />
+                    <TextBlock
+                        Margin="0,0,8,0"
+                        VerticalAlignment="Center"
+                        Foreground="#A1A1AA"
+                        Text="至" />
                     <DatePicker
                         Width="130"
                         Margin="0,0,12,0"
                         FontSize="12"
-                        SelectedDate="{Binding QueryDate}" />
-
+                        SelectedDate="{Binding DateTo}" />
                     <Button
                         Height="30"
                         Padding="12,0"
@@ -61,16 +61,8 @@
                         Content="查询"
                         FontSize="12"
                         Foreground="#E4E4E7"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Visibility="{Binding CanQueryCloud, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                    <TextBlock
-                        VerticalAlignment="Center"
-                        FontSize="12"
-                        Foreground="#F59E0B"
-                        Text="{Binding OfflineHint}" />
+                        Style="{StaticResource MaterialDesignOutlinedButton}" />
                 </StackPanel>
-
                 <Button
                     Height="32"
                     Padding="16,0"
@@ -95,45 +87,102 @@
             </Grid>
         </Border>
 
+        <!--  汇总卡片  -->
         <UniformGrid
             Grid.Row="1"
             Margin="16,0,16,12"
             Columns="5">
-            <Border Margin="0,0,8,0" Padding="16,12" Background="#1E1E1E" CornerRadius="8">
+            <Border
+                Margin="0,0,8,0"
+                Padding="16,12"
+                Background="#1E1E1E"
+                CornerRadius="8">
                 <StackPanel>
-                    <TextBlock FontSize="12" Foreground="#A1A1AA" Text="总产量" />
-                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#E4E4E7" Text="{Binding PeriodTotal}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="区间总产量" />
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="Bold"
+                        Foreground="#E4E4E7"
+                        Text="{Binding PeriodTotal}" />
                 </StackPanel>
             </Border>
-            <Border Margin="4,0" Padding="16,12" Background="#1E1E1E" CornerRadius="8">
+            <Border
+                Margin="4,0"
+                Padding="16,12"
+                Background="#1E1E1E"
+                CornerRadius="8">
                 <StackPanel>
-                    <TextBlock FontSize="12" Foreground="#A1A1AA" Text="良品" />
-                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#22C55E" Text="{Binding PeriodOk}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="良品数" />
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="Bold"
+                        Foreground="#22C55E"
+                        Text="{Binding PeriodOk}" />
                 </StackPanel>
             </Border>
-            <Border Margin="4,0" Padding="16,12" Background="#1E1E1E" CornerRadius="8">
+            <Border
+                Margin="4,0"
+                Padding="16,12"
+                Background="#1E1E1E"
+                CornerRadius="8">
                 <StackPanel>
-                    <TextBlock FontSize="12" Foreground="#A1A1AA" Text="不良" />
-                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#EF4444" Text="{Binding PeriodNg}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="不良数" />
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="Bold"
+                        Foreground="#EF4444"
+                        Text="{Binding PeriodNg}" />
                 </StackPanel>
             </Border>
-            <Border Margin="4,0" Padding="16,12" Background="#1E1E1E" CornerRadius="8">
+            <Border
+                Margin="4,0"
+                Padding="16,12"
+                Background="#1E1E1E"
+                CornerRadius="8">
                 <StackPanel>
-                    <TextBlock FontSize="12" Foreground="#A1A1AA" Text="良率" />
-                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#F59E0B" Text="{Binding PeriodYield}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="综合良率" />
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="Bold"
+                        Foreground="#F59E0B"
+                        Text="{Binding PeriodYield}" />
                 </StackPanel>
             </Border>
-            <Border Margin="8,0,0,0" Padding="16,12" Background="#1E1E1E" CornerRadius="8">
+            <Border
+                Margin="8,0,0,0"
+                Padding="16,12"
+                Background="#1E1E1E"
+                CornerRadius="8">
                 <StackPanel>
-                    <TextBlock FontSize="12" Foreground="#A1A1AA" Text="均值" />
-                    <TextBlock FontSize="26" FontWeight="Bold" Foreground="#818CF8" Text="{Binding AvgDaily}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="日均产量" />
+                    <TextBlock
+                        FontSize="26"
+                        FontWeight="Bold"
+                        Foreground="#818CF8"
+                        Text="{Binding AvgDaily}" />
                 </StackPanel>
             </Border>
         </UniformGrid>
 
+        <!--  每日明细表格  -->
         <Border
             Grid.Row="2"
-            Margin="16,0,16,12"
+            Margin="16,0,16,16"
             Background="#1E1E1E"
             BorderBrush="#333"
             BorderThickness="1"
@@ -152,80 +201,129 @@
                 ItemsSource="{Binding DailyRecords}"
                 RowBackground="#1E1E1E">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Width="120" Binding="{Binding DateFull}" Header="时间/日期" />
-                    <DataGridTextColumn Width="80" Binding="{Binding DayOfWeek}" Header="班次" />
-                    <DataGridTextColumn Width="80" Binding="{Binding Total}" Header="产能总数" />
-                    <DataGridTextColumn Width="80" Binding="{Binding OkCount}" Header="OK总数" />
-                    <DataGridTextColumn Width="80" Binding="{Binding NgCount}" Header="NG总数" />
-                    <DataGridTextColumn Width="80" Binding="{Binding Yield}" Header="良率" />
-                    <DataGridTextColumn Width="80" Binding="{Binding DayShiftTotal}" Header="白班" />
-                    <DataGridTextColumn Width="80" Binding="{Binding NightShiftTotal}" Header="夜班" />
+                    <DataGridTextColumn
+                        Width="100"
+                        Binding="{Binding DateFull}"
+                        Header="日期" />
+                    <DataGridTextColumn
+                        Width="60"
+                        Binding="{Binding DayOfWeek}"
+                        Header="星期" />
+                    <DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding Total}"
+                        Header="总产量">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding OkCount}"
+                        Header="良品">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#22C55E" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="80"
+                        Binding="{Binding NgCount}"
+                        Header="不良">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#EF4444" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding Yield}"
+                        Header="良率">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#F59E0B" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <!--  班次明细列（新增）  -->
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding DayShiftTotal}"
+                        Header="白班">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#F59E0B" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding DayShiftOk}"
+                        Header="白班OK">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#22C55E" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding DayShiftNg}"
+                        Header="白班NG">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#EF4444" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding NightShiftTotal}"
+                        Header="夜班">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#818CF8" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="70"
+                        Binding="{Binding NightShiftOk}"
+                        Header="夜班OK">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#22C55E" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn
+                        Width="*"
+                        Binding="{Binding NightShiftNg}"
+                        Header="夜班NG">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#EF4444" />
+                                <Setter Property="HorizontalAlignment" Value="Center" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
                 </DataGrid.Columns>
             </DataGrid>
-        </Border>
-
-        <Border
-            Grid.Row="3"
-            Margin="16,0,16,16"
-            Background="#1E1E1E"
-            BorderBrush="#333"
-            BorderThickness="1"
-            CornerRadius="8">
-            <Grid Margin="10">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <ItemsControl Grid.Row="0" ItemsSource="{Binding ChartBars}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Rows="1" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="4,0">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="*" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" VerticalAlignment="Bottom" Height="190">
-                                    <Border
-                                        VerticalAlignment="Bottom"
-                                        Height="{Binding ChartHeight}"
-                                        Background="#6366F1"
-                                        CornerRadius="4,4,0,0" />
-                                </Grid>
-                                <TextBlock
-                                    Grid.Row="1"
-                                    Margin="0,6,0,0"
-                                    HorizontalAlignment="Center"
-                                    FontSize="10"
-                                    Foreground="#A1A1AA"
-                                    Text="{Binding Label}" />
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-
-                <ItemsControl Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding ChartBars}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Rows="1" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock
-                                HorizontalAlignment="Center"
-                                FontSize="11"
-                                Foreground="#E4E4E7"
-                                Text="{Binding Value}" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Grid>
         </Border>
     </Grid>
 </UserControl>

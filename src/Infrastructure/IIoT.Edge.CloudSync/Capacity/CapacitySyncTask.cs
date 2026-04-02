@@ -10,12 +10,12 @@ namespace IIoT.Edge.CloudSync.Capacity;
 
 /// <summary>
 /// 产能定时同步任务
-/// 
+///
 /// 60 秒间隔
-/// 实时上传：在线时 POST 每台设备的当天产能快照
+/// 实时上传：在线时 POST 每台设备当天每个半小时桶的产能快照
 /// 失败 → 不处理（CapacityConsumer 离线时已写缓冲，RetryTask 补传）
-/// 
-/// RetryBufferAsync：由 RetryTask 调用，补传 SQLite 中积压的产能缓冲
+///
+/// RetryBufferAsync：由 RetryTask 调用，从 SQLite 聚合半小时桶后逐槽补传
 /// </summary>
 public class CapacitySyncTask : ICapacitySyncTask
 {
@@ -79,28 +79,21 @@ public class CapacitySyncTask : ICapacitySyncTask
 
             await ExecuteOnceAsync();
         }
-
         _logger.Info("[CapacitySync] 产能同步已停止");
     }
 
     private async Task ExecuteOnceAsync()
     {
-        if (_deviceService.CurrentState == NetworkState.Offline)
-            return;
+        if (_deviceService.CurrentState == NetworkState.Offline) return;
 
         var device = _deviceService.CurrentDevice;
-        if (device is null)
-            return;
+        if (device is null) return;
 
-        try
-        {
-            await SyncAllDevicesAsync(device.DeviceId);
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"[CapacitySync] 同步异常: {ex.Message}");
-        }
+        try { await SyncAllDevicesAsync(device.DeviceId); }
+        catch (Exception ex) { _logger.Error($"[CapacitySync] 同步异常: {ex.Message}"); }
     }
+
+    // ── 实时同步：按半小时桶上传当天产能快照 ─────────────────────────
 
     private async Task SyncAllDevicesAsync(Guid cloudDeviceId)
     {
@@ -113,7 +106,9 @@ public class CapacitySyncTask : ICapacitySyncTask
             if (string.IsNullOrEmpty(capacity.Date) || capacity.TotalAll == 0)
                 continue;
 
-            foreach (var slot in capacity.HalfHourly.Where(h => h.Total > 0).OrderBy(h => h.SlotIndex))
+            foreach (var slot in capacity.HalfHourly
+                         .Where(h => h.Total > 0)
+                         .OrderBy(h => h.SlotIndex))
             {
                 var shiftCode = GetShiftCodeByTime(slot.StartHour, slot.StartMinute);
                 await PostHalfHourCapacityAsync(
@@ -132,8 +127,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     private async Task PostHalfHourCapacityAsync(
         Guid deviceId, string date, int hour, int minute, string shiftCode,
-        int totalCount, int okCount, int ngCount,
-        string logLabel)
+        int totalCount, int okCount, int ngCount, string logLabel)
     {
         var endMinute = minute == 30 ? 0 : 30;
         var endHour = minute == 30 ? (hour + 1) % 24 : hour;
@@ -154,12 +148,13 @@ public class CapacitySyncTask : ICapacitySyncTask
         var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
 
         if (success)
-            _logger.Info($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步成功: 总={totalCount}, OK={okCount}, NG={ngCount}");
+            _logger.Info($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} " +
+                         $"同步成功: 总={totalCount}, OK={okCount}, NG={ngCount}");
         else
             _logger.Warn($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步失败");
     }
 
-    // ── RetryTask 调用：补传离线缓冲 ─────────────────────────
+    // ── 补传：从 SQLite 聚合半小时桶，逐槽 POST 云端 ─────────────────
 
     public async Task<bool> RetryBufferAsync()
     {
