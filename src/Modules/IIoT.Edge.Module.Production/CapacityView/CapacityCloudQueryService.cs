@@ -1,4 +1,4 @@
-﻿using IIoT.Edge.Common.DataPipeline.Capacity;
+using IIoT.Edge.Common.DataPipeline.Capacity;
 using IIoT.Edge.Contracts.Device;
 using System.Text.Json;
 

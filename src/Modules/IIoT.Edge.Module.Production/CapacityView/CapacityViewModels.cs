@@ -1,4 +1,4 @@
-﻿namespace IIoT.Edge.Module.Production.CapacityView;
+namespace IIoT.Edge.Module.Production.CapacityView;
 
 /// <summary>
 /// 产能列表行 ViewModel
