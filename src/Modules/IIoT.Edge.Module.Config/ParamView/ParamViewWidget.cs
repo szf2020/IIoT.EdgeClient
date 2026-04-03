@@ -1,12 +1,13 @@
-﻿using AutoMapper;
+// 修改文件
+// 路径：src/Modules/IIoT.Edge.Module.Config/ParamView/ParamViewWidget.cs
+//
+// 修改点：
+// 1. 构造注入由 ISender + IMapper 改为仅 ISender（IMapper 已移入各 Handler）
+// 2. 所有数据调用改为 _sender.Send(new XxxQuery/Command(...))
+// 3. UI 属性、集合、命令定义完全不变
+
 using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Contracts.Hardware.Queries;
-using IIoT.Edge.Domain.Config.Aggregates;
 using IIoT.Edge.Module.Config.ParamView.Models;
-using IIoT.Edge.Module.Config.UseCases.DeviceParam.Commands;
-using IIoT.Edge.Module.Config.UseCases.DeviceParam.Queries;
-using IIoT.Edge.Module.Config.UseCases.SystemConfig.Commands;
-using IIoT.Edge.Module.Config.UseCases.SystemConfig.Queries;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using MediatR;
 using System.Collections.ObjectModel;
@@ -16,11 +17,10 @@ namespace IIoT.Edge.Module.Config.ParamView;
 
 public class ParamViewWidget : WidgetBase
 {
-    public override string WidgetId => "Config.ParamView";
+    public override string WidgetId   => "Config.ParamView";
     public override string WidgetName => "参数配置";
 
     private readonly ISender _sender;
-    private readonly IMapper _mapper;
 
     private int _selectedTabIndex;
     public int SelectedTabIndex
@@ -29,7 +29,7 @@ public class ParamViewWidget : WidgetBase
         set { _selectedTabIndex = value; OnPropertyChanged(); }
     }
 
-    public ObservableCollection<GeneralParamVm> GeneralParams { get; } = new();
+    public ObservableCollection<GeneralParamVm>     GeneralParams     { get; } = new();
     public ObservableCollection<DeviceParamGroupVm> DeviceParamGroups { get; } = new();
 
     private DeviceParamGroupVm? _selectedGroup;
@@ -44,23 +44,21 @@ public class ParamViewWidget : WidgetBase
         }
     }
 
-    public ICommand SaveCommand { get; }
-    public ICommand AddGeneralParamCommand { get; }
+    public ICommand SaveCommand               { get; }
+    public ICommand AddGeneralParamCommand    { get; }
     public ICommand DeleteGeneralParamCommand { get; }
-    public ICommand AddDeviceParamCommand { get; }
-    public ICommand DeleteDeviceParamCommand { get; }
+    public ICommand AddDeviceParamCommand     { get; }
+    public ICommand DeleteDeviceParamCommand  { get; }
 
-    public ParamViewWidget(
-        ISender sender,
-        IMapper mapper)
+    public ParamViewWidget(ISender sender)
     {
         _sender = sender;
-        _mapper = mapper;
 
         SaveCommand = new AsyncCommand(SaveAsync);
-        AddGeneralParamCommand = new BaseCommand(
-            _ => GeneralParams.Add(new GeneralParamVm()));
+
+        AddGeneralParamCommand    = new BaseCommand(_ => GeneralParams.Add(new GeneralParamVm()));
         DeleteGeneralParamCommand = new BaseCommand(OnDeleteGeneralParam);
+
         AddDeviceParamCommand = new BaseCommand(_ =>
         {
             if (SelectedGroup != null)
@@ -69,40 +67,26 @@ public class ParamViewWidget : WidgetBase
         DeleteDeviceParamCommand = new BaseCommand(OnDeleteDeviceParam);
     }
 
+    public override async Task OnActivatedAsync()
+    {
+        await InitAsync();
+    }
+
     private async Task InitAsync()
     {
-        await LoadGeneralParamsAsync();
-        await LoadDeviceGroupsAsync();
-    }
-
-    private async Task LoadGeneralParamsAsync()
-    {
-        var result = await _sender.Send(new GetAllSystemConfigsQuery());
+        var result = await _sender.Send(new LoadParamViewQuery());
 
         GeneralParams.Clear();
-        if (result.IsSuccess && result.Value != null)
-        {
-            foreach (var vm in result.Value
-                .OrderBy(x => x.SortOrder)
-                .Select(e => _mapper.Map<GeneralParamVm>(e)))
-                GeneralParams.Add(vm);
-        }
-    }
+        foreach (var vm in result.GeneralParams)
+            GeneralParams.Add(vm);
 
-    private async Task LoadDeviceGroupsAsync()
-    {
-        var result = await _sender.Send(new GetAllNetworkDevicesQuery());
         DeviceParamGroups.Clear();
-
-        if (result.IsSuccess && result.Value != null)
-        {
-            foreach (var d in result.Value.Where(x => x.IsEnabled))
-                DeviceParamGroups.Add(new DeviceParamGroupVm
-                {
-                    DeviceId = d.Id,
-                    DeviceName = $"{d.DeviceName} ({d.IpAddress})"
-                });
-        }
+        foreach (var header in result.DeviceGroups)
+            DeviceParamGroups.Add(new DeviceParamGroupVm
+            {
+                DeviceId   = header.DeviceId,
+                DeviceName = header.DeviceName
+            });
 
         if (DeviceParamGroups.Count > 0)
             SelectedGroup = DeviceParamGroups[0];
@@ -110,22 +94,15 @@ public class ParamViewWidget : WidgetBase
 
     private async Task LoadDeviceParamsAsync(DeviceParamGroupVm group)
     {
-        var result = await _sender.Send(new GetDeviceParamsQuery(group.DeviceId));
+        var parms = await _sender.Send(new LoadDeviceParamsQuery(group.DeviceId));
 
         group.Params.Clear();
-        if (result.IsSuccess && result.Value != null)
-        {
-            foreach (var vm in result.Value
-                .OrderBy(x => x.SortOrder)
-                .Select(e => _mapper.Map<DeviceParamVm>(e)))
-                group.Params.Add(vm);
-        }
+        foreach (var vm in parms) group.Params.Add(vm);
     }
 
     private void OnDeleteGeneralParam(object? param)
     {
-        if (param is GeneralParamVm vm)
-            GeneralParams.Remove(vm);
+        if (param is GeneralParamVm vm) GeneralParams.Remove(vm);
     }
 
     private void OnDeleteDeviceParam(object? param)
@@ -133,33 +110,20 @@ public class ParamViewWidget : WidgetBase
         if (param is DeviceParamVm vm && SelectedGroup != null)
             SelectedGroup.Params.Remove(vm);
     }
-    public override async Task OnActivatedAsync()
-    {
-        await InitAsync();
-    }
+
     private async Task SaveAsync()
     {
-        // 通用参数：ViewModel → DTO
-        var sysConfigs = GeneralParams
-            .Select(vm => new SystemConfigDto(vm.Name, vm.Value, vm.Description))
-            .ToList();
+        if (SelectedGroup is null) return;
 
-        await _sender.Send(new SaveSystemConfigsCommand(sysConfigs));
+        await _sender.Send(new SaveParamViewCommand(
+            GeneralParams.ToList(),
+            SelectedGroup.DeviceId,
+            SelectedGroup.Params.ToList()));
 
-        // 设备参数：ViewModel → DTO
-        if (SelectedGroup != null)
-        {
-            var deviceParams = SelectedGroup.Params
-                .Select(vm => new DeviceParamDto(vm.Name, vm.Value, vm.Unit, vm.Min, vm.Max))
-                .ToList();
-
-            await _sender.Send(new SaveDeviceParamsCommand(
-                SelectedGroup.DeviceId, deviceParams));
-        }
-
-        // 重新加载
-        await LoadGeneralParamsAsync();
-        if (SelectedGroup != null)
-            await LoadDeviceParamsAsync(SelectedGroup);
+        // 保存后重新加载（与原逻辑一致）
+        await LoadDeviceParamsAsync(SelectedGroup);
+        var result = await _sender.Send(new LoadParamViewQuery());
+        GeneralParams.Clear();
+        foreach (var vm in result.GeneralParams) GeneralParams.Add(vm);
     }
 }

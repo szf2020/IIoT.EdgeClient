@@ -1,20 +1,27 @@
-﻿using IIoT.Edge.Common.Context;
-using IIoT.Edge.Common.DataPipeline.CellData;
-using IIoT.Edge.Contracts.Context;
+// 修改文件
+// 路径：src/Modules/IIoT.Edge.Module.Production/Monitor/MonitorWidget.cs
+//
+// 修改点：
+// 1. 构造注入由 IProductionContextStore 改为 ISender
+// 2. Refresh() 内部的数据聚合逻辑移入 GetMonitorSnapshotHandler
+// 3. ViewModel 只负责调用 _sender.Send(new GetMonitorSnapshotQuery()) 并将结果填充到 DeviceTabs
+// 4. DeviceTabVm 类保持在本文件末尾，内容完全不变
+
+using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.UI.Shared.PluginSystem;
+using MediatR;
 using System.Collections.ObjectModel;
 using System.Data;
-using System.Reflection;
 using System.Windows.Threading;
 
 namespace IIoT.Edge.Module.Production.Monitor;
 
 public class MonitorWidget : WidgetBase
 {
-    public override string WidgetId => "Production.Monitor";
+    public override string WidgetId   => "Production.Monitor";
     public override string WidgetName => "实时数据监控";
 
-    private readonly IProductionContextStore _contextStore;
+    private readonly ISender         _sender;
     private readonly DispatcherTimer _refreshTimer;
 
     public ObservableCollection<DeviceTabVm> DeviceTabs { get; } = new();
@@ -26,117 +33,63 @@ public class MonitorWidget : WidgetBase
         set { _selectedTabIndex = value; OnPropertyChanged(); }
     }
 
-    public MonitorWidget(IProductionContextStore contextStore)
+    public MonitorWidget(ISender sender)
     {
-        _contextStore = contextStore;
+        _sender = sender;
 
         _refreshTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(500)
         };
-        _refreshTimer.Tick += (_, _) => Refresh();
+        _refreshTimer.Tick += async (_, _) => await RefreshAsync();
         _refreshTimer.Start();
     }
 
-    private void Refresh()
+    private async Task RefreshAsync()
     {
-        // 1. 获取当前所有运行中的生产上下文
-        var contexts = _contextStore.GetAll();
+        var snapshots = await _sender.Send(new GetMonitorSnapshotQuery());
 
-        // 2. 优化：使用 DeviceName 作为唯一标识进行同步
-        var currentNames = contexts.Select(c => c.DeviceName).ToHashSet();
+        var currentNames = snapshots.Select(s => s.DeviceName).ToHashSet();
 
-        // 移除已经不存在的设备 Tab
-        var removeList = DeviceTabs.Where(d => !currentNames.Contains(d.DeviceName)).ToList();
-        foreach (var item in removeList)
-            DeviceTabs.Remove(item);
+        // 移除已不存在的设备 Tab
+        var toRemove = DeviceTabs.Where(d => !currentNames.Contains(d.DeviceName)).ToList();
+        foreach (var item in toRemove) DeviceTabs.Remove(item);
 
-        // 3. 更新或新增设备 Tab
-        foreach (var ctx in contexts)
+        // 更新或新增设备 Tab
+        foreach (var s in snapshots)
         {
-            var tab = DeviceTabs.FirstOrDefault(d => d.DeviceName == ctx.DeviceName);
+            var tab = DeviceTabs.FirstOrDefault(d => d.DeviceName == s.DeviceName);
             if (tab is null)
             {
-                tab = new DeviceTabVm { DeviceName = ctx.DeviceName };
+                tab = new DeviceTabVm { DeviceName = s.DeviceName };
                 DeviceTabs.Add(tab);
             }
 
-            // ── 产能数据 ──────────────────────────────────
-            var cap = ctx.TodayCapacity;
+            tab.DayShiftOk      = s.DayShiftOk;
+            tab.DayShiftNg      = s.DayShiftNg;
+            tab.DayShiftTotal   = s.DayShiftTotal;
+            tab.DayShiftYield   = s.DayShiftYield;
 
-            tab.DayShiftOk = cap.DayShift.OkCount;
-            tab.DayShiftNg = cap.DayShift.NgCount;
-            tab.DayShiftTotal = cap.DayShift.Total;
-            tab.DayShiftYield = cap.DayShift.Yield;
+            tab.NightShiftOk    = s.NightShiftOk;
+            tab.NightShiftNg    = s.NightShiftNg;
+            tab.NightShiftTotal = s.NightShiftTotal;
+            tab.NightShiftYield = s.NightShiftYield;
 
-            tab.NightShiftOk = cap.NightShift.OkCount;
-            tab.NightShiftNg = cap.NightShift.NgCount;
-            tab.NightShiftTotal = cap.NightShift.Total;
-            tab.NightShiftYield = cap.NightShift.Yield;
+            tab.TotalAll        = s.TotalAll;
+            tab.OkAll           = s.OkAll;
+            tab.NgAll           = s.NgAll;
+            tab.YieldAll        = s.YieldAll;
 
-            tab.TotalAll = cap.TotalAll;
-            tab.OkAll = cap.OkAll;
-            tab.NgAll = cap.NgAll;
-            tab.YieldAll = cap.YieldAll;
-
-            // ── 设备数据汇总 ──────────────────────────────
-            var deviceInfo = string.Join("  ",
-                ctx.DeviceBag.OrderBy(kv => kv.Key)
-                    .Select(kv => $"{kv.Key}={FormatValue(kv.Value)}"));
-            tab.DeviceDataSummary = string.IsNullOrEmpty(deviceInfo) ? "暂无数据" : deviceInfo;
-
-            var stepInfo = string.Join("  ",
-                ctx.StepStates.Select(kv => $"{kv.Key}={kv.Value}"));
-            tab.StepSummary = string.IsNullOrEmpty(stepInfo) ? "暂无任务" : stepInfo;
-
-            tab.CellCount = ctx.CurrentCells.Count;
-            tab.CellTable = BuildCellTable(ctx);
+            tab.DeviceDataSummary = s.DeviceDataSummary;
+            tab.StepSummary       = s.StepSummary;
+            tab.CellCount         = s.CellCount;
+            tab.CellTable         = s.CellTable;
         }
-    }
-
-    private static DataTable BuildCellTable(ProductionContext ctx)
-    {
-        var table = new DataTable();
-        if (ctx.CurrentCells.Count == 0) return table;
-
-        var firstCell = ctx.CurrentCells.Values.First();
-        var properties = firstCell.GetType()
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => p.Name != nameof(CellDataBase.ProcessType)
-                     && p.Name != nameof(CellDataBase.DisplayLabel))
-            .ToList();
-
-        foreach (var prop in properties)
-            table.Columns.Add(prop.Name, typeof(string));
-
-        foreach (var cell in ctx.CurrentCells.Values)
-        {
-            var row = table.NewRow();
-            foreach (var prop in properties)
-            {
-                var value = prop.GetValue(cell);
-                row[prop.Name] = FormatValue(value);
-            }
-            table.Rows.Add(row);
-        }
-
-        return table;
-    }
-
-    private static string FormatValue(object? value)
-    {
-        return value switch
-        {
-            null => "--",
-            DateTime dt => dt.ToString("HH:mm:ss.fff"),
-            bool b => b ? "OK" : "NG",
-            double d => d.ToString("F3"),
-            _ => value.ToString() ?? "--"
-        };
     }
 }
 
-public class DeviceTabVm : IIoT.Edge.Common.Mvvm.BaseNotifyPropertyChanged
+// DeviceTabVm 与原文件内容完全相同，保持在本文件末尾不动。
+public class DeviceTabVm : BaseNotifyPropertyChanged
 {
     // ── 设备标识 ──────────────────────────────────
     private string _deviceName = "";

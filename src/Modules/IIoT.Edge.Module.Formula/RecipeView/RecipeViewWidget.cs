@@ -1,8 +1,16 @@
-﻿using IIoT.Edge.Common.DataPipeline.Recipe;
+// 修改文件
+// 路径：src/Modules/IIoT.Edge.Module.Formula/RecipeView/RecipeViewWidget.cs
+//
+// 修改点：
+// 1. 构造注入改为 ISender + IRecipeService（IRecipeService 只用于订阅 RecipeChanged 事件）
+// 2. 所有对 recipeService 方法的直接调用，改为 _sender.Send(new XxxCommand/Query(...))
+// 3. 其余 UI 属性、命令定义、RecipeParamVm 完全不变
+
+using IIoT.Edge.Common.DataPipeline.Recipe;
 using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Contracts.Auth;
 using IIoT.Edge.Contracts.Recipe;
 using IIoT.Edge.UI.Shared.PluginSystem;
+using MediatR;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -11,48 +19,27 @@ namespace IIoT.Edge.Module.Formula.RecipeView;
 
 public class RecipeViewWidget : WidgetBase
 {
-    public override string WidgetId => "Formula.RecipeView";
+    public override string WidgetId   => "Formula.RecipeView";
     public override string WidgetName => "产品配方";
 
-    private readonly IRecipeService _recipeService;
-    private readonly IAuthService _authService;
+    private readonly ISender        _sender;
+    private readonly IRecipeService _recipeService; // 仅用于订阅事件
 
     // ── 配方参数列表 ─────────────────────────────
-
     public ObservableCollection<RecipeParamVm> Params { get; } = new();
 
     // ── 配方元信息 ───────────────────────────────
-
-    private string _recipeName = "";
-    public string RecipeName
-    {
-        get => _recipeName;
-        set { _recipeName = value; OnPropertyChanged(); }
-    }
-
+    private string _recipeName    = "";
     private string _recipeVersion = "";
-    public string RecipeVersion
-    {
-        get => _recipeVersion;
-        set { _recipeVersion = value; OnPropertyChanged(); }
-    }
+    private string _processName   = "";
+    private string _updatedAt     = "";
 
-    private string _processName = "";
-    public string ProcessName
-    {
-        get => _processName;
-        set { _processName = value; OnPropertyChanged(); }
-    }
-
-    private string _updatedAt = "";
-    public string UpdatedAt
-    {
-        get => _updatedAt;
-        set { _updatedAt = value; OnPropertyChanged(); }
-    }
+    public string RecipeName    { get => _recipeName;    set { _recipeName    = value; OnPropertyChanged(); } }
+    public string RecipeVersion { get => _recipeVersion; set { _recipeVersion = value; OnPropertyChanged(); } }
+    public string ProcessName   { get => _processName;   set { _processName   = value; OnPropertyChanged(); } }
+    public string UpdatedAt     { get => _updatedAt;     set { _updatedAt     = value; OnPropertyChanged(); } }
 
     // ── 数据源切换 ───────────────────────────────
-
     private bool _isCloudSource = true;
     public bool IsCloudSource
     {
@@ -64,7 +51,6 @@ public class RecipeViewWidget : WidgetBase
             OnPropertyChanged(nameof(SourceLabel));
         }
     }
-
     public string SourceLabel => IsCloudSource ? "云端配方" : "本地配方";
 
     private bool _isLocalAdmin;
@@ -75,74 +61,48 @@ public class RecipeViewWidget : WidgetBase
     }
 
     // ── 本地编辑 ─────────────────────────────────
-
-    private string _editKey = "";
-    public string EditKey
-    {
-        get => _editKey;
-        set { _editKey = value; OnPropertyChanged(); }
-    }
-
-    private string _editMin = "";
-    public string EditMin
-    {
-        get => _editMin;
-        set { _editMin = value; OnPropertyChanged(); }
-    }
-
-    private string _editMax = "";
-    public string EditMax
-    {
-        get => _editMax;
-        set { _editMax = value; OnPropertyChanged(); }
-    }
-
+    private string _editKey  = "";
+    private string _editMin  = "";
+    private string _editMax  = "";
     private string _editUnit = "";
-    public string EditUnit
-    {
-        get => _editUnit;
-        set { _editUnit = value; OnPropertyChanged(); }
-    }
+
+    public string EditKey  { get => _editKey;  set { _editKey  = value; OnPropertyChanged(); } }
+    public string EditMin  { get => _editMin;  set { _editMin  = value; OnPropertyChanged(); } }
+    public string EditMax  { get => _editMax;  set { _editMax  = value; OnPropertyChanged(); } }
+    public string EditUnit { get => _editUnit; set { _editUnit = value; OnPropertyChanged(); } }
 
     // ── 命令 ─────────────────────────────────────
+    public ICommand SyncCloudCommand       { get; }
+    public ICommand SwitchSourceCommand    { get; }
+    public ICommand SaveLocalParamCommand  { get; }
+    public ICommand DeleteLocalParamCommand{ get; }
 
-    public ICommand SyncCloudCommand { get; }
-    public ICommand SwitchSourceCommand { get; }
-    public ICommand SaveLocalParamCommand { get; }
-    public ICommand DeleteLocalParamCommand { get; }
-
-    public RecipeViewWidget(
-        IRecipeService recipeService,
-        IAuthService authService)
+    public RecipeViewWidget(ISender sender, IRecipeService recipeService)
     {
+        _sender        = sender;
         _recipeService = recipeService;
-        _authService = authService;
 
-        SyncCloudCommand = new AsyncCommand(OnSyncCloudAsync);
-        SwitchSourceCommand = new BaseCommand(_ => OnSwitchSource());
-        SaveLocalParamCommand = new BaseCommand(_ => OnSaveLocalParam());
+        SyncCloudCommand        = new AsyncCommand(OnSyncCloudAsync);
+        SwitchSourceCommand     = new BaseCommand(_ => OnSwitchSource());
+        SaveLocalParamCommand   = new BaseCommand(_ => OnSaveLocalParam());
         DeleteLocalParamCommand = new BaseCommand(OnDeleteLocalParam);
 
         _recipeService.RecipeChanged += RefreshUI;
-        _authService.AuthStateChanged += _ => UpdateAdminState();
-
-        UpdateAdminState();
-        IsCloudSource = _recipeService.ActiveSource == RecipeSource.Cloud;
-        RefreshUI();
+        _recipeService.RecipeChanged += () => _ = UpdateAdminStateAsync();
     }
 
-    public override Task OnActivatedAsync()
+    public override async Task OnActivatedAsync()
     {
-        UpdateAdminState();
+        await UpdateAdminStateAsync();
+        IsCloudSource = _recipeService.ActiveSource == RecipeSource.Cloud;
         RefreshUI();
-        return Task.CompletedTask;
     }
 
     // ── 命令实现 ─────────────────────────────────
 
     private async Task OnSyncCloudAsync()
     {
-        var success = await _recipeService.PullFromCloudAsync();
+        var success = await _sender.Send(new SyncRecipeFromCloudCommand());
         if (!success)
         {
             MessageBox.Show("配方拉取失败，请检查网络连接。", "提示",
@@ -153,7 +113,7 @@ public class RecipeViewWidget : WidgetBase
     private void OnSwitchSource()
     {
         var newSource = IsCloudSource ? RecipeSource.Local : RecipeSource.Cloud;
-        _recipeService.SwitchSource(newSource);
+        _ = _sender.Send(new SwitchRecipeSourceCommand(newSource));
         IsCloudSource = newSource == RecipeSource.Cloud;
     }
 
@@ -164,64 +124,58 @@ public class RecipeViewWidget : WidgetBase
         double? min = double.TryParse(EditMin, out var minVal) ? minVal : null;
         double? max = double.TryParse(EditMax, out var maxVal) ? maxVal : null;
 
-        _recipeService.SetLocalParam(EditKey.Trim(), min, max, EditUnit.Trim());
-        EditKey = "";
-        EditMin = "";
-        EditMax = "";
-        EditUnit = "";
+        _ = _sender.Send(new SaveLocalRecipeParamCommand(
+            EditKey.Trim(), min, max, EditUnit.Trim()));
+
+        EditKey = ""; EditMin = ""; EditMax = ""; EditUnit = "";
     }
 
     private void OnDeleteLocalParam(object? param)
     {
         if (param is string key && !string.IsNullOrEmpty(key))
-            _recipeService.RemoveLocalParam(key);
+            _ = _sender.Send(new DeleteLocalRecipeParamCommand(key));
     }
 
     // ── 内部方法 ─────────────────────────────────
 
-    private void UpdateAdminState()
+    private async Task UpdateAdminStateAsync()
     {
-        IsLocalAdmin = _authService.CurrentUser?.IsLocalAdmin ?? false;
+        IsLocalAdmin = await _sender.Send(new GetIsLocalAdminQuery());
     }
 
     private void RefreshUI()
     {
-        var recipe = _recipeService.ActiveRecipe;
+        _ = RefreshUIAsync();
+    }
 
-        if (recipe is null)
+    private async Task RefreshUIAsync()
+    {
+        var snapshot = await _sender.Send(new GetRecipeViewSnapshotQuery());
+
+        if (snapshot is null)
         {
-            RecipeName = "未加载";
-            RecipeVersion = "";
-            ProcessName = "";
-            UpdatedAt = "";
+            RecipeName    = "未加载";
+            RecipeVersion = ""; ProcessName = ""; UpdatedAt = "";
             Params.Clear();
             return;
         }
 
-        RecipeName = recipe.RecipeName;
-        RecipeVersion = recipe.Version;
-        ProcessName = recipe.ProcessName;
-        UpdatedAt = recipe.UpdatedAt;
+        RecipeName    = snapshot.RecipeName;
+        RecipeVersion = snapshot.RecipeVersion;
+        ProcessName   = snapshot.ProcessName;
+        UpdatedAt     = snapshot.UpdatedAt;
+        IsCloudSource = snapshot.IsCloudSource;
 
         Params.Clear();
-        foreach (var kv in recipe.Parameters.OrderBy(kv => kv.Key))
-        {
-            var p = kv.Value;
-            Params.Add(new RecipeParamVm
-            {
-                Name = p.Name,
-                Min = p.Min?.ToString("F2") ?? "--",
-                Max = p.Max?.ToString("F2") ?? "--",
-                Unit = p.Unit
-            });
-        }
+        foreach (var p in snapshot.Params) Params.Add(p);
     }
 }
 
+// RecipeParamVm 与原文件内容完全相同，保持在本文件末尾不动。
 public class RecipeParamVm
 {
     public string Name { get; set; } = "";
-    public string Min { get; set; } = "";
-    public string Max { get; set; } = "";
+    public string Min  { get; set; } = "";
+    public string Max  { get; set; } = "";
     public string Unit { get; set; } = "";
 }

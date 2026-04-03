@@ -1,12 +1,16 @@
-﻿using AutoMapper;
+// 修改文件
+// 路径：src/Modules/IIoT.Edge.Module.Hardware/HardwareConfigView/HardwareConfigWidget.cs
+//
+// 修改点：
+// 1. 构造注入由 ISender + IAuthService + IMapper 改为 ISender + IAuthService
+//    （IMapper 已移入各 Handler）
+// 2. LoadAllAsync / LoadIoMappingsAsync / SaveAsync 内部改为 _sender.Send(new XxxQuery/Command(...))
+// 3. 其余 UI 属性、枚举绑定、分页命令、集合操作逻辑完全不变
+
 using IIoT.Edge.Common.Enums;
 using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Contracts.Auth;
-using IIoT.Edge.Contracts.Hardware.Queries;
 using IIoT.Edge.Module.Hardware.HardwareConfigView.Models;
-using IIoT.Edge.Module.Hardware.UseCases.IoMapping.Commands;
-using IIoT.Edge.Module.Hardware.UseCases.NetworkDevice.Commands;
-using IIoT.Edge.Module.Hardware.UseCases.SerialDevice.Commands;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using MediatR;
 using System.Collections.ObjectModel;
@@ -16,16 +20,16 @@ namespace IIoT.Edge.Module.Hardware.HardwareConfigView;
 
 public class HardwareConfigWidget : WidgetBase
 {
-    public override string WidgetId => "Hardware.ConfigView";
+    public override string WidgetId   => "Hardware.ConfigView";
     public override string WidgetName => "硬件配置";
 
-    private readonly ISender _sender;
+    private readonly ISender      _sender;
     private readonly IAuthService _authService;
-    private readonly IMapper _mapper;
 
     private const int IoPageSize = 20;
+
     public IEnumerable<DeviceType> DeviceTypes => Enum.GetValues<DeviceType>();
-    public IEnumerable<PlcType> PlcTypes => Enum.GetValues<PlcType>();
+    public IEnumerable<PlcType>    PlcTypes    => Enum.GetValues<PlcType>();
 
     public bool CanEdit => _authService.HasPermission(Permissions.HardwareConfig);
 
@@ -37,8 +41,8 @@ public class HardwareConfigWidget : WidgetBase
     }
 
     public ObservableCollection<NetworkDeviceVm> NetworkDevices { get; } = new();
-    public ObservableCollection<SerialDeviceVm> SerialDevices { get; } = new();
-    public ObservableCollection<IoMappingVm> IoMappings { get; } = new();
+    public ObservableCollection<SerialDeviceVm>  SerialDevices  { get; } = new();
+    public ObservableCollection<IoMappingVm>     IoMappings     { get; } = new();
 
     private NetworkDeviceVm? _selectedNetworkDevice;
     public NetworkDeviceVm? SelectedNetworkDevice
@@ -67,53 +71,46 @@ public class HardwareConfigWidget : WidgetBase
         set { _ioTotalCount = value; OnPropertyChanged(); }
     }
 
-    public ICommand AddNetworkDeviceCommand { get; }
+    public ICommand AddNetworkDeviceCommand    { get; }
     public ICommand DeleteNetworkDeviceCommand { get; }
-    public ICommand AddSerialDeviceCommand { get; }
-    public ICommand DeleteSerialDeviceCommand { get; }
-    public ICommand AddIoMappingCommand { get; }
-    public ICommand DeleteIoMappingCommand { get; }
-    public ICommand IoNextPageCommand { get; }
-    public ICommand IoPrevPageCommand { get; }
-    public ICommand SaveCommand { get; }
+    public ICommand AddSerialDeviceCommand     { get; }
+    public ICommand DeleteSerialDeviceCommand  { get; }
+    public ICommand AddIoMappingCommand        { get; }
+    public ICommand DeleteIoMappingCommand     { get; }
+    public ICommand IoNextPageCommand          { get; }
+    public ICommand IoPrevPageCommand          { get; }
+    public ICommand SaveCommand                { get; }
 
-    public HardwareConfigWidget(
-        ISender sender,
-        IAuthService authService,
-        IMapper mapper)
+    public HardwareConfigWidget(ISender sender, IAuthService authService)
     {
-        _sender = sender;
+        _sender      = sender;
         _authService = authService;
-        _mapper = mapper;
 
-        AddNetworkDeviceCommand = new BaseCommand(_ => AddNetworkDevice(), _ => CanEdit);
-        DeleteNetworkDeviceCommand = new BaseCommand(DeleteNetworkDevice, _ => CanEdit);
-        AddSerialDeviceCommand = new BaseCommand(_ => AddSerialDevice(), _ => CanEdit);
-        DeleteSerialDeviceCommand = new BaseCommand(DeleteSerialDevice, _ => CanEdit);
-        AddIoMappingCommand = new BaseCommand(_ => AddIoMapping(), _ => CanEdit);
-        DeleteIoMappingCommand = new BaseCommand(DeleteIoMapping, _ => CanEdit);
-        IoNextPageCommand = new AsyncCommand(() => IoNextPageAsync());
-        IoPrevPageCommand = new BaseCommand(_ => IoPrevPage(), _ => IoPageIndex > 0);
-        SaveCommand = new AsyncCommand(SaveAsync);
+        AddNetworkDeviceCommand    = new BaseCommand(_ => AddNetworkDevice(),  _ => CanEdit);
+        DeleteNetworkDeviceCommand = new BaseCommand(DeleteNetworkDevice,       _ => CanEdit);
+        AddSerialDeviceCommand     = new BaseCommand(_ => AddSerialDevice(),   _ => CanEdit);
+        DeleteSerialDeviceCommand  = new BaseCommand(DeleteSerialDevice,        _ => CanEdit);
+        AddIoMappingCommand        = new BaseCommand(_ => AddIoMapping(),      _ => CanEdit);
+        DeleteIoMappingCommand     = new BaseCommand(DeleteIoMapping,           _ => CanEdit);
+        IoNextPageCommand          = new AsyncCommand(() => IoNextPageAsync());
+        IoPrevPageCommand          = new BaseCommand(_ => IoPrevPage(),        _ => IoPageIndex > 0);
+        SaveCommand                = new AsyncCommand(SaveAsync);
+    }
+
+    public override async Task OnActivatedAsync()
+    {
+        await LoadAllAsync();
     }
 
     private async Task LoadAllAsync()
     {
-        var networkResult = await _sender.Send(new GetAllNetworkDevicesQuery());
-        NetworkDevices.Clear();
-        if (networkResult.IsSuccess && networkResult.Value != null)
-        {
-            foreach (var n in networkResult.Value)
-                NetworkDevices.Add(_mapper.Map<NetworkDeviceVm>(n));
-        }
+        var result = await _sender.Send(new LoadHardwareConfigQuery());
 
-        var serialResult = await _sender.Send(new GetAllSerialDevicesQuery());
+        NetworkDevices.Clear();
+        foreach (var n in result.NetworkDevices) NetworkDevices.Add(n);
+
         SerialDevices.Clear();
-        if (serialResult.IsSuccess && serialResult.Value != null)
-        {
-            foreach (var s in serialResult.Value)
-                SerialDevices.Add(_mapper.Map<SerialDeviceVm>(s));
-        }
+        foreach (var s in result.SerialDevices) SerialDevices.Add(s);
 
         if (NetworkDevices.Count > 0)
             SelectedNetworkDevice = NetworkDevices[0];
@@ -123,16 +120,12 @@ public class HardwareConfigWidget : WidgetBase
     {
         if (SelectedNetworkDevice is null) return;
 
-        var result = await _sender.Send(new GetIoMappingsByDeviceQuery(
-            SelectedNetworkDevice.Id, IoPageIndex, IoPageSize));
+        var result = await _sender.Send(
+            new LoadIoMappingsQuery(SelectedNetworkDevice.Id, IoPageIndex, IoPageSize));
 
         IoMappings.Clear();
-        if (result.IsSuccess && result.Value != null)
-        {
-            IoTotalCount = result.Value.TotalCount;
-            foreach (var item in result.Value.Items)
-                IoMappings.Add(_mapper.Map<IoMappingVm>(item));
-        }
+        IoTotalCount = result.TotalCount;
+        foreach (var item in result.Items) IoMappings.Add(item);
     }
 
     private async Task IoNextPageAsync()
@@ -154,8 +147,7 @@ public class HardwareConfigWidget : WidgetBase
 
     private void DeleteNetworkDevice(object? param)
     {
-        if (param is NetworkDeviceVm vm)
-            NetworkDevices.Remove(vm);
+        if (param is NetworkDeviceVm vm) NetworkDevices.Remove(vm);
     }
 
     private void AddSerialDevice()
@@ -163,8 +155,7 @@ public class HardwareConfigWidget : WidgetBase
 
     private void DeleteSerialDevice(object? param)
     {
-        if (param is SerialDeviceVm vm)
-            SerialDevices.Remove(vm);
+        if (param is SerialDeviceVm vm) SerialDevices.Remove(vm);
     }
 
     private void AddIoMapping()
@@ -173,58 +164,25 @@ public class HardwareConfigWidget : WidgetBase
         IoMappings.Add(new IoMappingVm
         {
             NetworkDeviceId = SelectedNetworkDevice.Id,
-            Direction = "Read",
-            DataType = "Int16",
-            AddressCount = 1
+            Direction       = "Read",
+            DataType        = "Int16",
+            AddressCount    = 1
         });
     }
 
     private void DeleteIoMapping(object? param)
     {
-        if (param is IoMappingVm vm)
-            IoMappings.Remove(vm);
+        if (param is IoMappingVm vm) IoMappings.Remove(vm);
     }
 
     private async Task SaveAsync()
     {
-        // 网络设备：ViewModel → DTO
-        var networkDtos = NetworkDevices
-            .Select(vm => new NetworkDeviceDto(
-                vm.Id, vm.DeviceName, vm.DeviceType,
-                vm.DeviceModel, vm.IpAddress, vm.Port1, vm.IsEnabled))
-            .ToList();
-        await _sender.Send(new SaveNetworkDevicesCommand(networkDtos));
+        await _sender.Send(new SaveHardwareConfigCommand(
+            NetworkDevices.ToList(),
+            SerialDevices.ToList(),
+            SelectedNetworkDevice?.Id ?? 0,
+            IoMappings.ToList()));
 
-        // 串口设备：ViewModel → DTO
-        var serialDtos = SerialDevices
-            .Select(vm => new SerialDeviceDto(
-                vm.Id, vm.DeviceName, vm.DeviceType,
-                vm.PortName, vm.BaudRate, vm.IsEnabled))
-            .ToList();
-        await _sender.Send(new SaveSerialDevicesCommand(serialDtos));
-
-        // IO映射：ViewModel → DTO
-        if (SelectedNetworkDevice is not null)
-        {
-            var ioDtos = IoMappings
-                .Select(vm => new IoMappingDto(
-                    vm.Id, SelectedNetworkDevice.Id, vm.Label,
-                    vm.PlcAddress, vm.AddressCount, vm.DataType,
-                    vm.Direction, vm.SortOrder))
-                .ToList();
-            await _sender.Send(new SaveIoMappingsCommand(
-                SelectedNetworkDevice.Id, ioDtos));
-        }
-
-        // 重新加载
         await LoadAllAsync();
     }
-
-    public override async Task OnActivatedAsync()
-    {
-        await LoadAllAsync();
-    }
-
-
-
 }
