@@ -7,7 +7,8 @@ namespace IIoT.Edge.Module.Production.CapacityView;
 /// <summary>
 /// 产能云端查询服务
 /// 封装所有对云端 HTTP 的调用和数据解析
-/// 统一使用 deviceId 作为唯一标识
+/// deviceId — 云端 MAC 寻址后分配的唯一 ID
+/// plcName  — 本地 PLC 设备名，用于在同一上位机下区分多台 PLC
 /// </summary>
 public class CapacityCloudQueryService
 {
@@ -25,15 +26,14 @@ public class CapacityCloudQueryService
     // ── 按生产日查询（优先 hourly 明细，兜底 summary）────────────────────
 
     public async Task<List<DailyCapacityVm>> QueryByProductionDayAsync(
-        Guid deviceId, DateTime productionDate)
+        Guid deviceId, DateTime productionDate, string plcName)
+
     {
         var nextDay = productionDate.AddDays(1);
 
-        // 优先拿 hourly 明细
-        var hourlyToday = await QueryHourlyAsync(deviceId, productionDate);
-        var hourlyNextDay = await QueryHourlyAsync(deviceId, nextDay);
+        var hourlyToday = await QueryHourlyAsync(deviceId, productionDate, plcName);
+        var hourlyNextDay = await QueryHourlyAsync(deviceId, nextDay, plcName);
 
-        // 次日只取 00:00-DayStart 之前的夜班槽
         var nightSlots = hourlyNextDay
             .Where(x => x.StartHour < _shiftConfig.DayStartTime.Hours ||
                         (x.StartHour == _shiftConfig.DayStartTime.Hours &&
@@ -58,9 +58,8 @@ public class CapacityCloudQueryService
                 }).ToList();
         }
 
-        // hourly 无数据，summary 兜底
-        var summaryToday = await QuerySummaryAsync(deviceId, productionDate);
-        var summaryNextDay = await QuerySummaryAsync(deviceId, nextDay);
+        var summaryToday = await QuerySummaryAsync(deviceId, productionDate, plcName);
+        var summaryNextDay = await QuerySummaryAsync(deviceId, nextDay, plcName);
 
         if (summaryToday is null && summaryNextDay is null)
             return new List<DailyCapacityVm>();
@@ -73,48 +72,49 @@ public class CapacityCloudQueryService
         {
             new()
             {
-                Date             = productionDate.ToString("MM-dd"),
-                DateFull         = productionDate.ToString("yyyy-MM-dd"),
-                DayOfWeek        = productionDate.ToString("ddd"),
-                Total            = totalCount,
-                OkCount          = okCount,
-                NgCount          = ngCount,
-                Yield            = totalCount > 0 ? $"{okCount * 100.0 / totalCount:F1}%" : "0%",
-                DayShiftTotal    = summaryToday?.DayShiftTotal   ?? 0,
-                DayShiftOk       = summaryToday?.DayShiftOk      ?? 0,
-                DayShiftNg       = summaryToday?.DayShiftNg      ?? 0,
-                NightShiftTotal  = (summaryToday?.NightShiftTotal ?? 0) + (summaryNextDay?.NightShiftTotal ?? 0),
-                NightShiftOk     = (summaryToday?.NightShiftOk   ?? 0) + (summaryNextDay?.NightShiftOk   ?? 0),
-                NightShiftNg     = (summaryToday?.NightShiftNg   ?? 0) + (summaryNextDay?.NightShiftNg   ?? 0),
+                Date            = productionDate.ToString("MM-dd"),
+                DateFull        = productionDate.ToString("yyyy-MM-dd"),
+                DayOfWeek       = productionDate.ToString("ddd"),
+                Total           = totalCount,
+                OkCount         = okCount,
+                NgCount         = ngCount,
+                Yield           = totalCount > 0 ? $"{okCount * 100.0 / totalCount:F1}%" : "0%",
+                DayShiftTotal   = summaryToday?.DayShiftTotal  ?? 0,
+                DayShiftOk      = summaryToday?.DayShiftOk     ?? 0,
+                DayShiftNg      = summaryToday?.DayShiftNg     ?? 0,
+                NightShiftTotal = (summaryToday?.NightShiftTotal ?? 0) + (summaryNextDay?.NightShiftTotal ?? 0),
+                NightShiftOk    = (summaryToday?.NightShiftOk   ?? 0) + (summaryNextDay?.NightShiftOk   ?? 0),
+                NightShiftNg    = (summaryToday?.NightShiftNg   ?? 0) + (summaryNextDay?.NightShiftNg   ?? 0),
             }
         };
     }
 
-    // ── 按月查询（一次请求，后端聚合）───────────────────────────────────
+    // ── 按月查询 ───────────────────────────────────────────────────────────
 
     public async Task<List<DailyCapacityVm>> QueryByMonthAsync(
-        Guid deviceId, int year, int month)
+        Guid deviceId, int year, int month, string plcName)
+
     {
         var startDate = new DateTime(year, month, 1);
         var endDate = startDate.AddMonths(1).AddDays(-1);
 
-        var rows = await QuerySummaryRangeAsync(deviceId, startDate, endDate);
+        var rows = await QuerySummaryRangeAsync(deviceId, startDate, endDate, plcName);
         return rows.Where(r => r.Total > 0).ToList();
     }
 
-    // ── 按年查询（一次请求，后端聚合，按月汇总）─────────────────────────
+    // ── 按年查询 ───────────────────────────────────────────────────────────
 
     public async Task<List<DailyCapacityVm>> QueryByYearAsync(
-        Guid deviceId, int year)
+        Guid deviceId, int year, string plcName)
+
     {
         var startDate = new DateTime(year, 1, 1);
         var endDate = new DateTime(year, 12, 31);
 
-        var rows = await QuerySummaryRangeAsync(deviceId, startDate, endDate);
+        var rows = await QuerySummaryRangeAsync(deviceId, startDate, endDate, plcName);
 
-        // 按月聚合
         return rows
-            .GroupBy(r => r.DateFull.Substring(0, 7)) // yyyy-MM
+            .GroupBy(r => r.DateFull.Substring(0, 7))
             .Select(g =>
             {
                 var total = g.Sum(x => x.Total);
@@ -135,12 +135,17 @@ public class CapacityCloudQueryService
             .ToList();
     }
 
-    // ── 私有：调云端接口 ─────────────────────────────────────────────────
+    // ── 私有：调云端接口 ──────────────────────────────────────────────────
 
     private async Task<List<HourlySlotVm>> QueryHourlyAsync(
-        Guid deviceId, DateTime date)
+        Guid deviceId, DateTime date, string plcName)
+
     {
-        var url = $"/api/v1/Capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}";
+        var url = string.IsNullOrEmpty(plcName)
+            ? $"/api/v1/Capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}"
+            : $"/api/v1/Capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+
+
         var json = await _cloudHttpClient.GetAsync(url);
         if (string.IsNullOrWhiteSpace(json)) return new();
 
@@ -191,9 +196,14 @@ public class CapacityCloudQueryService
     }
 
     private async Task<DailySummaryVm?> QuerySummaryAsync(
-        Guid deviceId, DateTime date)
+        Guid deviceId, DateTime date, string plcName)
+
     {
-        var url = $"/api/v1/Capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}";
+        var url = string.IsNullOrEmpty(plcName)
+            ? $"/api/v1/Capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}"
+            : $"/api/v1/Capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+
+
         var json = await _cloudHttpClient.GetAsync(url);
         if (string.IsNullOrWhiteSpace(json)) return null;
 
@@ -237,9 +247,14 @@ public class CapacityCloudQueryService
     }
 
     private async Task<List<DailyCapacityVm>> QuerySummaryRangeAsync(
-        Guid deviceId, DateTime startDate, DateTime endDate)
+        Guid deviceId, DateTime startDate, DateTime endDate, string plcName)
+
     {
-        var url = $"/api/v1/Capacity/summary/range?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}";
+        var url = string.IsNullOrEmpty(plcName)
+            ? $"/api/v1/Capacity/summary/range?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}"
+            : $"/api/v1/Capacity/summary/range?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+
+
         var json = await _cloudHttpClient.GetAsync(url);
         if (string.IsNullOrWhiteSpace(json)) return new();
 

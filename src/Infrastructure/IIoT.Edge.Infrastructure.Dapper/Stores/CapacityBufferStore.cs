@@ -29,10 +29,15 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
             CellResult    INTEGER NOT NULL,
             ShiftCode     TEXT    NOT NULL,
             CompletedTime TEXT    NOT NULL,
-            CreatedAt     TEXT    NOT NULL
+            CreatedAt     TEXT    NOT NULL,
+            PlcName       TEXT    NOT NULL DEFAULT ''
+
         );
         CREATE INDEX IF NOT EXISTS idx_buffer_completed
-            ON capacity_buffer (CompletedTime);";
+            ON capacity_buffer (CompletedTime);
+        CREATE INDEX IF NOT EXISTS idx_buffer_plcname
+            ON capacity_buffer (PlcName);"
+;
 
     public CapacityBufferStore(
         SqliteConnectionFactory connectionFactory,
@@ -47,9 +52,10 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
     {
         const string sql = @"
             INSERT INTO capacity_buffer
-                (Barcode, CellResult, ShiftCode, CompletedTime, CreatedAt)
+                (Barcode, CellResult, ShiftCode, CompletedTime, CreatedAt, PlcName)
             VALUES
-                (@Barcode, @CellResult, @ShiftCode, @CompletedTime, @CreatedAt)";
+                (@Barcode, @CellResult, @ShiftCode, @CompletedTime, @CreatedAt, @PlcName)"
+;
 
         await SafeExecuteAsync(sql, new
         {
@@ -57,7 +63,9 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
             record.CellResult,
             CompletedTime = record.CompletedTime.ToString("O"),
             record.ShiftCode,
-            CreatedAt = DateTime.Now.ToString("O")
+            CreatedAt = DateTime.Now.ToString("O"),
+            record.PlcName
+
         });
     }
 
@@ -67,9 +75,10 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
     {
         const string sql = @"
             INSERT INTO capacity_buffer
-                (Barcode, CellResult, ShiftCode, CompletedTime, CreatedAt)
+                (Barcode, CellResult, ShiftCode, CompletedTime, CreatedAt, PlcName)
             VALUES
-                (@Barcode, @CellResult, @ShiftCode, @CompletedTime, @CreatedAt)";
+                (@Barcode, @CellResult, @ShiftCode, @CompletedTime, @CreatedAt, @PlcName)"
+;
 
         var now = DateTime.Now.ToString("O");
         var rows = records.Select(r => new
@@ -78,7 +87,9 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
             r.CellResult,
             r.ShiftCode,
             CompletedTime = r.CompletedTime.ToString("O"),
-            CreatedAt = now
+            CreatedAt = now,
+            r.PlcName
+
         }).ToList();
 
         if (rows.Count == 0) return;
@@ -97,7 +108,7 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
         }
     }
 
-    // ── 按班次汇总（兼容旧补传）──────────────────────────────────────
+    // ── 按班次汇总（兼容旧补传，不需要 PlcName）──────────────────────
 
     public async Task<List<BufferSummaryDto>> GetShiftSummaryAsync()
     {
@@ -115,7 +126,7 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
         return await SafeQueryAsync<BufferSummaryDto>(sql);
     }
 
-    // ── 按半小时桶汇总（补传主链路）─────────────────────────────────
+    // ── 按半小时桶 + PLC 汇总（补传主链路）──────────────────────────
 
     public async Task<List<BufferHourlySummaryDto>> GetHourlySummaryAsync()
     {
@@ -128,6 +139,7 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
                     THEN 30 ELSE 0
                 END                                                   AS MinuteBucket,
                 ShiftCode,
+                PlcName,
                 COUNT(*)                                              AS Total,
                 SUM(CASE WHEN CellResult = 1 THEN 1 ELSE 0 END)      AS OkCount,
                 SUM(CASE WHEN CellResult = 0 THEN 1 ELSE 0 END)      AS NgCount
@@ -139,7 +151,9 @@ public class CapacityBufferStore : DapperRepositoryBase<CapacityRecord>, ICapaci
                     WHEN CAST(substr(CompletedTime, 15, 2) AS INTEGER) >= 30
                     THEN 30 ELSE 0
                 END,
-                ShiftCode
+                ShiftCode,
+                PlcName
+
             ORDER BY Date ASC, Hour ASC, MinuteBucket ASC, ShiftCode ASC";
 
         return await SafeQueryAsync<BufferHourlySummaryDto>(sql);

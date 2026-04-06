@@ -15,7 +15,7 @@ public class BufferSummaryDto
 }
 
 /// <summary>
-/// 离线缓冲小时汇总 DTO（按日期+小时+分钟桶+班次汇总）
+/// 离线缓冲小时汇总 DTO（按日期+小时+分钟桶+班次+PLC汇总）
 /// </summary>
 public class BufferHourlySummaryDto
 {
@@ -26,6 +26,8 @@ public class BufferHourlySummaryDto
     public int Total { get; set; }
     public int OkCount { get; set; }
     public int NgCount { get; set; }
+    public string PlcName { get; set; } = string.Empty;
+
 }
 
 /// <summary>
@@ -36,33 +38,21 @@ public class BufferHourlySummaryDto
 /// </summary>
 public interface ICapacityBufferStore
 {
-    /// <summary>
-    /// 写入单条离线缓冲记录（实时写入，每个电芯完成时调用）
-    /// </summary>
+    /// <summary>写入单条离线缓冲记录（实时写入，每个电芯完成时调用）</summary>
     Task SaveAsync(CapacityRecord record);
 
-    /// <summary>
-    /// 批量写入离线缓冲记录（事务批量插入，历史数据生成/大批量场景使用）
-    /// </summary>
+    /// <summary>批量写入离线缓冲记录</summary>
     Task SaveBatchAsync(IEnumerable<CapacityRecord> records);
 
-    /// <summary>
-    /// 按日期+班次汇总（兼容旧补传）
-    /// </summary>
+    /// <summary>按日期+班次汇总（兼容旧补传）</summary>
     Task<List<BufferSummaryDto>> GetShiftSummaryAsync();
 
-    /// <summary>
-    /// 按日期+小时+分钟桶+班次汇总（补传时用，聚合后逐槽 POST 云端）
-    /// </summary>
+    /// <summary>按日期+小时+分钟桶+班次+PLC汇总（补传时用）</summary>
     Task<List<BufferHourlySummaryDto>> GetHourlySummaryAsync();
 
-    /// <summary>
-    /// 补传成功后清空所有缓冲
-    /// </summary>
+    /// <summary>补传成功后清空所有缓冲</summary>
     Task ClearAllAsync();
 
-    /// <summary>
-    /// 缓冲区记录数（诊断用）
-    /// </summary>
+    /// <summary>缓冲区记录数（诊断用）</summary>
     Task<int> GetCountAsync();
 }

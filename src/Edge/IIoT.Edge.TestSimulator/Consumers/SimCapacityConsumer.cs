@@ -15,31 +15,31 @@ namespace IIoT.Edge.TestSimulator.Consumers;
 public sealed class SimCapacityConsumer : ICapacityConsumer
 {
     private readonly FakeTodayCapacityStore _capacityStore;
-    private readonly IDeviceService         _deviceService;
-    private readonly ICapacityBufferStore   _bufferStore;
-    private readonly ILogService            _logger;
+    private readonly IDeviceService _deviceService;
+    private readonly ICapacityBufferStore _bufferStore;
+    private readonly ILogService _logger;
 
-    public string  Name         => "Capacity";
-    public int     Order        => 10;
+    public string Name => "Capacity";
+    public int Order => 10;
     public string? RetryChannel => null;
 
     public SimCapacityConsumer(
         FakeTodayCapacityStore capacityStore,
-        IDeviceService         deviceService,
-        ICapacityBufferStore   bufferStore,
-        ILogService            logger)
+        IDeviceService deviceService,
+        ICapacityBufferStore bufferStore,
+        ILogService logger)
     {
         _capacityStore = capacityStore;
         _deviceService = deviceService;
-        _bufferStore   = bufferStore;
-        _logger        = logger;
+        _bufferStore = bufferStore;
+        _logger = logger;
     }
 
     public async Task<bool> ProcessAsync(CellCompletedRecord record)
     {
-        var cellData      = record.CellData;
+        var cellData = record.CellData;
         var completedTime = cellData.CompletedTime ?? DateTime.Now;
-        var isOk          = cellData.CellResult ?? false;
+        var isOk = cellData.CellResult ?? false;
 
         var shiftCode = _capacityStore.Increment(cellData.DeviceName, completedTime, isOk);
 
@@ -47,11 +47,13 @@ public sealed class SimCapacityConsumer : ICapacityConsumer
         {
             await _bufferStore.SaveAsync(new CapacityRecord
             {
-                Barcode       = cellData.DisplayLabel,
-                CellResult    = isOk,
-                ShiftCode     = shiftCode,
+                Barcode = cellData.DisplayLabel,
+                CellResult = isOk,
+                ShiftCode = shiftCode,
                 CompletedTime = completedTime,
-                CreatedAt     = DateTime.Now
+                CreatedAt = DateTime.Now,
+                PlcName = cellData.DeviceName
+
             });
             _logger.Info($"[SimCapacity] 离线缓存: {cellData.DisplayLabel}");
         }

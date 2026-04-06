@@ -1,9 +1,8 @@
-﻿using IIoT.Edge.Common.DataPipeline.Capacity;
-using IIoT.Edge.Common.Mvvm;
+﻿using IIoT.Edge.Common.Mvvm;
 using IIoT.Edge.Contracts.Context;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.UI.Shared.PluginSystem;
+using MediatR;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
@@ -15,10 +14,11 @@ public class CapacityViewWidget : WidgetBase
     public override string WidgetId => "Production.CapacityView";
     public override string WidgetName => "产能查询";
 
+    private readonly ISender _sender;
     private readonly IProductionContextStore _contextStore;
     private readonly IDeviceService _deviceService;
-    private readonly CapacityCloudQueryService _queryService;
 
+    // DeviceNames 来自本地 PLC 上下文，下拉选哪台 PLC 就查那台的云端产能
     public ObservableCollection<string> DeviceNames { get; } = new();
     public ObservableCollection<string> QueryModes { get; } = new() { "按日查询", "按月查询", "按年查询" };
     public ObservableCollection<DailyCapacityVm> DailyRecords { get; } = new();
@@ -77,13 +77,13 @@ public class CapacityViewWidget : WidgetBase
     public ICommand ExportCommand { get; }
 
     public CapacityViewWidget(
+        ISender sender,
         IProductionContextStore contextStore,
-        IDeviceService deviceService,
-        CapacityCloudQueryService queryService)
+        IDeviceService deviceService)
     {
+        _sender = sender;
         _contextStore = contextStore;
         _deviceService = deviceService;
-        _queryService = queryService;
 
         QueryCommand = new AsyncCommand(QueryHistoryAsync);
         ExportCommand = new BaseCommand(_ => { });
@@ -98,6 +98,9 @@ public class CapacityViewWidget : WidgetBase
         await LoadCurrentDataAsync();
     }
 
+    /// <summary>由 CapacityViewUpdatedHandler 调用，不直接实现 INotificationHandler</summary>
+    public void OnCapacityUpdated() => _ = LoadCurrentDataAsync();
+
     private void OnNetworkStateChanged(NetworkState state)
     {
         IsOnline = state == NetworkState.Online;
@@ -106,8 +109,10 @@ public class CapacityViewWidget : WidgetBase
 
     private void RefreshDeviceList()
     {
-        var contexts = _contextStore.GetAll();
-        var names = contexts.Select(c => c.DeviceName).OrderBy(n => n).ToList();
+        var names = _contextStore.GetAll()
+            .Select(c => c.DeviceName)
+            .OrderBy(n => n)
+            .ToList();
 
         DeviceNames.Clear();
         foreach (var name in names) DeviceNames.Add(name);
@@ -119,41 +124,31 @@ public class CapacityViewWidget : WidgetBase
         OnPropertyChanged(nameof(SelectedDeviceName));
     }
 
-    // ── 获取当前设备 DeviceId ────────────────────────────────────────────
-
-    private Guid? GetCurrentDeviceId()
+    // cloudDeviceId 来自 MAC 寻址，固定唯一；plcName 来自下拉，区分同一上位机多台 PLC
+    private Guid? GetCloudDeviceId()
         => _deviceService.CurrentDevice?.DeviceId;
-
-    // ── 启动时加载当天数据 ───────────────────────────────────────────────
 
     private async Task LoadCurrentDataAsync()
     {
         DailyRecords.Clear();
-        if (string.IsNullOrEmpty(_selectedDeviceName) || !CanQueryCloud)
+        if (!CanQueryCloud)
         {
             ClearSummary();
             RefreshChart();
             return;
         }
 
-        var deviceId = GetCurrentDeviceId();
+        var deviceId = GetCloudDeviceId();
         if (deviceId is null) { ClearSummary(); RefreshChart(); return; }
 
-        var productionDate = _queryService.GetProductionDate(DateTime.Now);
-        var rows = await _queryService.QueryByProductionDayAsync(deviceId.Value, productionDate);
+        var result = await _sender.Send(
+            new LoadTodayCapacityQuery(deviceId.Value, DateTime.Now, _selectedDeviceName));
 
-        ApplyRows(rows);
-        AvgDaily = $"{PeriodTotal}";
-        RefreshChart();
+        ApplyResult(result);
     }
-
-    // ── 历史查询 ─────────────────────────────────────────────────────────
 
     private async Task QueryHistoryAsync()
     {
-        if (string.IsNullOrEmpty(_selectedDeviceName))
-        { ClearSummary(); return; }
-
         if (!CanQueryCloud)
         {
             MessageBox.Show("云端不通，无法查询产能数据。", "产能查询",
@@ -164,38 +159,28 @@ public class CapacityViewWidget : WidgetBase
             return;
         }
 
-        var deviceId = GetCurrentDeviceId();
+        var deviceId = GetCloudDeviceId();
         if (deviceId is null) { ClearSummary(); return; }
 
-        List<DailyCapacityVm> rows;
+        var result = await _sender.Send(
+            new QueryCapacityHistoryQuery(
+                deviceId.Value, SelectedQueryMode, QueryDate, _selectedDeviceName));
 
-        if (SelectedQueryMode == "按月查询")
-            rows = await _queryService.QueryByMonthAsync(deviceId.Value, QueryDate.Year, QueryDate.Month);
-        else if (SelectedQueryMode == "按年查询")
-            rows = await _queryService.QueryByYearAsync(deviceId.Value, QueryDate.Year);
-        else
-            rows = await _queryService.QueryByProductionDayAsync(deviceId.Value, QueryDate.Date);
-
-        ApplyRows(rows);
-
-        var divisor = SelectedQueryMode == "按年查询" ? 12 : Math.Max(1, rows.Count);
-        AvgDaily = $"{PeriodTotal / divisor}";
-        RefreshChart();
+        ApplyResult(result);
     }
 
-    // ── 工具方法 ─────────────────────────────────────────────────────────
-
-    private void ApplyRows(List<DailyCapacityVm> rows)
+    private void ApplyResult(CapacityViewResult result)
     {
         DailyRecords.Clear();
-        foreach (var row in rows) DailyRecords.Add(row);
+        foreach (var row in result.Rows) DailyRecords.Add(row);
 
-        PeriodTotal = rows.Sum(x => x.Total);
-        PeriodOk = rows.Sum(x => x.OkCount);
-        PeriodNg = rows.Sum(x => x.NgCount);
-        PeriodYield = PeriodTotal > 0
-            ? $"{PeriodOk * 100.0 / PeriodTotal:F2}%"
-            : "0%";
+        PeriodTotal = result.PeriodTotal;
+        PeriodOk = result.PeriodOk;
+        PeriodNg = result.PeriodNg;
+        PeriodYield = result.PeriodYield;
+        AvgDaily = result.AvgDaily;
+
+        RefreshChart();
     }
 
     private void RefreshChart()
@@ -219,10 +204,7 @@ public class CapacityViewWidget : WidgetBase
 
     private void ClearSummary()
     {
-        PeriodTotal = 0;
-        PeriodOk = 0;
-        PeriodNg = 0;
-        PeriodYield = "0%";
-        AvgDaily = "0";
+        PeriodTotal = 0; PeriodOk = 0; PeriodNg = 0;
+        PeriodYield = "0%"; AvgDaily = "0";
     }
 }

@@ -12,14 +12,14 @@ namespace IIoT.Edge.CloudSync.Capacity;
 
 /// <summary>
 /// 产能统计消费者
-/// 
+///
 /// 消费链 Order=10（最先执行）
 /// 每个电芯完成时：
 ///   1. 通过 CellData.DeviceName 定位对应设备的 TodayCapacity
 ///   2. ITodayCapacityStore.Increment — 内存计数 +1
 ///   3. MediatR 发布 CapacityUpdatedNotification — UI 实时刷新
 ///   4. Offline 时写 SQLite 离线缓冲 — 待补传
-/// 
+///
 /// 永远返回 true，不进重传队列
 /// </summary>
 public class CapacityConsumer : ICapacityConsumer
@@ -76,7 +76,9 @@ public class CapacityConsumer : ICapacityConsumer
                     CellResult = isOk,
                     ShiftCode = shiftCode,
                     CompletedTime = completedTime,
-                    CreatedAt = DateTime.Now
+                    CreatedAt = DateTime.Now,
+                    PlcName = deviceName
+
                 });
             }
 

@@ -127,7 +127,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     private async Task PostHalfHourCapacityAsync(
         Guid deviceId, string date, int hour, int minute, string shiftCode,
-        int totalCount, int okCount, int ngCount, string logLabel)
+        int totalCount, int okCount, int ngCount, string plcName)
     {
         var endMinute = minute == 30 ? 0 : 30;
         var endHour = minute == 30 ? (hour + 1) % 24 : hour;
@@ -142,16 +142,18 @@ public class CapacitySyncTask : ICapacitySyncTask
             shiftCode,
             totalCount,
             okCount,
-            ngCount
+            ngCount,
+            plcName
+
         };
 
         var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
 
         if (success)
-            _logger.Info($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} " +
+            _logger.Info($"[CapacitySync] [{plcName}] {date} {hour:D2}:{minute:D2}/{shiftCode} " +
                          $"同步成功: 总={totalCount}, OK={okCount}, NG={ngCount}");
         else
-            _logger.Warn($"[CapacitySync] [{logLabel}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步失败");
+            _logger.Warn($"[CapacitySync] [{plcName}] {date} {hour:D2}:{minute:D2}/{shiftCode} 同步失败");
     }
 
     // ── 补传：从 SQLite 聚合半小时桶，逐槽 POST 云端 ─────────────────
@@ -180,7 +182,9 @@ public class CapacitySyncTask : ICapacitySyncTask
                 shiftCode = s.ShiftCode,
                 totalCount = s.Total,
                 okCount = s.OkCount,
-                ngCount = s.NgCount
+                ngCount = s.NgCount,
+                plcName = s.PlcName
+
             };
 
             var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);

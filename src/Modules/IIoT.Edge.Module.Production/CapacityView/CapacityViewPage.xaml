@@ -1,5 +1,4 @@
-﻿<!--  路径：src/Modules/IIoT.Edge.Module.Production/CapacityView/CapacityViewPage.xaml  -->
-<UserControl
+﻿<UserControl
     x:Class="IIoT.Edge.Module.Production.CapacityView.CapacityViewPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -12,7 +11,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!--  顶部：标题 + 设备选择 + 日期筛选 + 操作  -->
+        <!--  顶部：标题 + 设备 + 查询模式 + 日期 + 操作  -->
         <Border Grid.Row="0" Padding="16,12">
             <Grid>
                 <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
@@ -23,7 +22,7 @@
                         Foreground="#E4E4E7"
                         Text="产能查询" />
 
-                    <!--  设备选择（新增）  -->
+                    <!--  设备选择  -->
                     <TextBlock
                         Margin="0,0,6,0"
                         VerticalAlignment="Center"
@@ -37,22 +36,33 @@
                         ItemsSource="{Binding DeviceNames}"
                         SelectedItem="{Binding SelectedDeviceName}" />
 
-                    <!--  日期范围  -->
-                    <DatePicker
-                        Width="130"
-                        Margin="0,0,8,0"
-                        FontSize="12"
-                        SelectedDate="{Binding DateFrom}" />
+                    <!--  查询模式  -->
                     <TextBlock
-                        Margin="0,0,8,0"
+                        Margin="0,0,6,0"
                         VerticalAlignment="Center"
+                        FontSize="12"
                         Foreground="#A1A1AA"
-                        Text="至" />
+                        Text="模式：" />
+                    <ComboBox
+                        Width="90"
+                        Margin="0,0,16,0"
+                        FontSize="12"
+                        ItemsSource="{Binding QueryModes}"
+                        SelectedItem="{Binding SelectedQueryMode}" />
+
+                    <!--  日期（单个，按日选天 / 按月选月 / 按年选年）  -->
+                    <TextBlock
+                        Margin="0,0,6,0"
+                        VerticalAlignment="Center"
+                        FontSize="12"
+                        Foreground="#A1A1AA"
+                        Text="日期：" />
                     <DatePicker
                         Width="130"
                         Margin="0,0,12,0"
                         FontSize="12"
-                        SelectedDate="{Binding DateTo}" />
+                        SelectedDate="{Binding QueryDate}" />
+
                     <Button
                         Height="30"
                         Padding="12,0"
@@ -63,6 +73,7 @@
                         Foreground="#E4E4E7"
                         Style="{StaticResource MaterialDesignOutlinedButton}" />
                 </StackPanel>
+
                 <Button
                     Height="32"
                     Padding="16,0"
@@ -254,8 +265,6 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-
-                    <!--  班次明细列（新增）  -->
                     <DataGridTextColumn
                         Width="70"
                         Binding="{Binding DayShiftTotal}"
