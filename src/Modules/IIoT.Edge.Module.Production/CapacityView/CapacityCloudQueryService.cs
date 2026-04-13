@@ -13,13 +13,16 @@ namespace IIoT.Edge.Module.Production.CapacityView;
 public class CapacityCloudQueryService
 {
     private readonly ICloudHttpClient _cloudHttpClient;
+    private readonly ICloudApiPathProvider _apiPathProvider;
     private readonly ShiftConfig _shiftConfig;
 
     public CapacityCloudQueryService(
         ICloudHttpClient cloudHttpClient,
+        ICloudApiPathProvider apiPathProvider,
         ShiftConfig shiftConfig)
     {
         _cloudHttpClient = cloudHttpClient;
+        _apiPathProvider = apiPathProvider;
         _shiftConfig = shiftConfig;
     }
 
@@ -141,9 +144,10 @@ public class CapacityCloudQueryService
         Guid deviceId, DateTime date, string plcName)
 
     {
+        var path = _apiPathProvider.GetCapacityHourlyPath();
         var url = string.IsNullOrEmpty(plcName)
-            ? $"/api/v1/Capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}"
-            : $"/api/v1/Capacity/hourly?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+            ? $"{path}?deviceId={deviceId}&date={date:yyyy-MM-dd}"
+            : $"{path}?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
 
 
         var json = await _cloudHttpClient.GetAsync(url);
@@ -199,9 +203,10 @@ public class CapacityCloudQueryService
         Guid deviceId, DateTime date, string plcName)
 
     {
+        var path = _apiPathProvider.GetCapacitySummaryPath();
         var url = string.IsNullOrEmpty(plcName)
-            ? $"/api/v1/Capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}"
-            : $"/api/v1/Capacity/summary?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+            ? $"{path}?deviceId={deviceId}&date={date:yyyy-MM-dd}"
+            : $"{path}?deviceId={deviceId}&date={date:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
 
 
         var json = await _cloudHttpClient.GetAsync(url);
@@ -250,9 +255,10 @@ public class CapacityCloudQueryService
         Guid deviceId, DateTime startDate, DateTime endDate, string plcName)
 
     {
+        var path = _apiPathProvider.GetCapacitySummaryRangePath();
         var url = string.IsNullOrEmpty(plcName)
-            ? $"/api/v1/Capacity/summary/range?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}"
-            : $"/api/v1/Capacity/summary/range?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
+            ? $"{path}?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}"
+            : $"{path}?deviceId={deviceId}&startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}&plcName={Uri.EscapeDataString(plcName)}";
 
 
         var json = await _cloudHttpClient.GetAsync(url);

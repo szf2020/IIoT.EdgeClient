@@ -23,8 +23,16 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var baseUrl = configuration["CloudApi:BaseUrl"] ?? "http://10.98.90.154:81";
-        var timeout = TimeSpan.FromSeconds(3);
+        services.Configure<CloudApiConfig>(configuration.GetSection("CloudApi"));
+        services.Configure<DeviceIdentityConfig>(configuration.GetSection("DeviceIdentity"));
+
+        var timeoutSecs = configuration.GetValue<int?>("CloudApi:TimeoutSecs") ?? 3;
+        var timeout = TimeSpan.FromSeconds(timeoutSecs);
+
+        services.AddSingleton<ICloudApiEndpointProvider, CloudApiEndpointProvider>();
+        services.AddSingleton<ICloudApiPathProvider>(sp =>
+            sp.GetRequiredService<ICloudApiEndpointProvider>());
+        services.AddSingleton<IDeviceInstanceIdResolver, DeviceInstanceIdResolver>();
 
         // ── 本地紧急登录配置 ────────────────────────────────────
         var localAdminConfig = new LocalAdminConfig();
@@ -34,7 +42,6 @@ public static class DependencyInjection
         // ── 人员认证 ───────────────────────────────────────────
         services.AddHttpClient<AuthService>(client =>
         {
-            client.BaseAddress = new Uri(baseUrl);
             client.Timeout = timeout;
         });
         services.AddSingleton<IAuthService>(sp => sp.GetRequiredService<AuthService>());
@@ -42,7 +49,6 @@ public static class DependencyInjection
         // ── 设备心跳寻址 ───────────────────────────────────────
         services.AddHttpClient<DeviceService>(client =>
         {
-            client.BaseAddress = new Uri(baseUrl);
             client.Timeout = timeout;
         });
         services.AddSingleton<IDeviceService>(sp => sp.GetRequiredService<DeviceService>());
@@ -50,13 +56,14 @@ public static class DependencyInjection
         // ── 云端通用 HttpClient ─────────────────────────────────
         services.AddHttpClient("CloudApi", client =>
         {
-            client.BaseAddress = new Uri(baseUrl);
             client.Timeout = timeout;
         });
         services.AddSingleton<ICloudHttpClient, CloudHttpClient>();
 
         // ── 云端上报消费者 ─────────────────────────────────────
         services.AddSingleton<ICloudConsumer, CloudConsumer>();
+        services.AddSingleton<ICloudBatchConsumer>(sp =>
+            (ICloudBatchConsumer)sp.GetRequiredService<ICloudConsumer>());
 
         // ── 产能消费者 ─────────────────────────────────────────
         services.AddSingleton<ICapacityConsumer, CapacityConsumer>();

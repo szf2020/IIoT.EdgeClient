@@ -2,6 +2,7 @@
 using IIoT.Edge.Common.DataPipeline.CellData;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Contracts.DataPipeline.SyncTask;
 using IIoT.Edge.Contracts.Device;
@@ -26,6 +27,7 @@ public class RetryTask : ScheduledTaskBase
     private readonly IFailedRecordStore _failedStore;
     private readonly IDeviceService _deviceService;
     private readonly List<ICellDataConsumer> _consumers;
+    private readonly ICloudBatchConsumer? _cloudBatchConsumer;
 
     // Cloud 通道专用：日志和产能补传委托
     private readonly IDeviceLogSyncTask? _deviceLogSync;
@@ -49,7 +51,8 @@ public class RetryTask : ScheduledTaskBase
         IDeviceService deviceService,
         IEnumerable<ICellDataConsumer> consumers,
         IDeviceLogSyncTask? deviceLogSync = null,
-        ICapacitySyncTask? capacitySync = null)
+        ICapacitySyncTask? capacitySync = null,
+        ICloudBatchConsumer? cloudBatchConsumer = null)
         : base(logger)
     {
         _channel = channel;
@@ -58,6 +61,7 @@ public class RetryTask : ScheduledTaskBase
         _consumers = consumers.OrderBy(c => c.Order).ToList();
         _deviceLogSync = deviceLogSync;
         _capacitySync = capacitySync;
+        _cloudBatchConsumer = cloudBatchConsumer;
     }
 
     protected override async Task ExecuteAsync()
@@ -85,6 +89,12 @@ public class RetryTask : ScheduledTaskBase
 
     private async Task RetryFailedCellRecordsAsync()
     {
+        if (_channel == "Cloud" && _cloudBatchConsumer is not null)
+        {
+            await RetryCloudInjectionBatchesAsync();
+            return;
+        }
+
         var records = await _failedStore
             .GetPendingAsync(_channel, batchSize: 5)
             .ConfigureAwait(false);
@@ -96,6 +106,69 @@ public class RetryTask : ScheduledTaskBase
         {
             await ProcessOneAsync(record).ConfigureAwait(false);
         }
+    }
+
+    private async Task RetryCloudInjectionBatchesAsync()
+    {
+        var records = await _failedStore
+            .GetPendingAsync(_channel, batchSize: 100)
+            .ConfigureAwait(false);
+
+        if (records.Count == 0)
+            return;
+
+        var batchCandidates = records
+            .Where(r => r.ProcessType == "Injection" && r.FailedTarget == "Cloud")
+            .ToList();
+
+        var others = records
+            .Where(r => !(r.ProcessType == "Injection" && r.FailedTarget == "Cloud"))
+            .ToList();
+
+        foreach (var chunk in batchCandidates.Chunk(100))
+        {
+            var completedRecords = new List<CellCompletedRecord>();
+            var validSourceRecords = new List<FailedCellRecord>();
+
+            foreach (var source in chunk)
+            {
+                var cellData = DeserializeCellData(source.ProcessType, source.CellDataJson);
+                if (cellData is null)
+                {
+                    Logger.Error($"[重传-{_channel}] ProcessType: {source.ProcessType} 反序列化失败，删除记录");
+                    await _failedStore.DeleteAsync(source.Id).ConfigureAwait(false);
+                    continue;
+                }
+
+                completedRecords.Add(new CellCompletedRecord { CellData = cellData });
+                validSourceRecords.Add(source);
+            }
+
+            if (completedRecords.Count == 0)
+                continue;
+
+            var success = await _cloudBatchConsumer!.ProcessBatchAsync(completedRecords).ConfigureAwait(false);
+            if (success)
+            {
+                foreach (var source in validSourceRecords)
+                    await _failedStore.DeleteAsync(source.Id).ConfigureAwait(false);
+
+                Logger.Info($"[重传-{_channel}] Injection 批量补传成功，条数={validSourceRecords.Count}");
+                continue;
+            }
+
+            foreach (var source in validSourceRecords)
+            {
+                await HandleRetryFailureAsync(source, source.FailedTarget, "云端批量补传失败")
+                    .ConfigureAwait(false);
+            }
+
+            Logger.Warn($"[重传-{_channel}] Injection 批量补传失败，条数={validSourceRecords.Count}");
+            break;
+        }
+
+        foreach (var record in others)
+            await ProcessOneAsync(record).ConfigureAwait(false);
     }
 
     private async Task ProcessOneAsync(FailedCellRecord record)

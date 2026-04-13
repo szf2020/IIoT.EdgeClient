@@ -1,5 +1,6 @@
 ﻿using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.DeviceLog;
+using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
@@ -23,6 +24,7 @@ namespace IIoT.Edge.CloudSync.DeviceLog;
 public class DeviceLogSyncTask : IDeviceLogSyncTask
 {
     private readonly ICloudHttpClient _cloudHttp;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
     private readonly IDeviceService _deviceService;
     private readonly IDeviceLogBufferStore _bufferStore;
     private readonly ILogService _logger;
@@ -37,11 +39,13 @@ public class DeviceLogSyncTask : IDeviceLogSyncTask
 
     public DeviceLogSyncTask(
         ICloudHttpClient cloudHttp,
+        ICloudApiEndpointProvider endpointProvider,
         IDeviceService deviceService,
         IDeviceLogBufferStore bufferStore,
         ILogService logger)
     {
         _cloudHttp = cloudHttp;
+        _endpointProvider = endpointProvider;
         _deviceService = deviceService;
         _bufferStore = bufferStore;
         _logger = logger;
@@ -125,9 +129,9 @@ public class DeviceLogSyncTask : IDeviceLogSyncTask
     {
         var payload = new
         {
+            deviceId,
             logs = batch.Select(l => new
             {
-                deviceId,
                 level = l.Level,
                 message = l.Message,
                 logTime = l.LogTime.ToString("O")
@@ -136,7 +140,7 @@ public class DeviceLogSyncTask : IDeviceLogSyncTask
 
         // 用 PostAsync，内部已捕获异常
         // 注意：不用 _logger 记录失败，避免死循环（日志失败→产生日志→入队列）
-        return await _cloudHttp.PostAsync("/api/v1/DeviceLog", payload);
+        return await _cloudHttp.PostAsync(_endpointProvider.GetDeviceLogPath(), payload);
     }
 
     private async Task SaveToBufferAsync(List<LogItem> batch)
@@ -185,16 +189,16 @@ public class DeviceLogSyncTask : IDeviceLogSyncTask
 
             var payload = new
             {
+                deviceId = device.DeviceId,
                 logs = records.Select(r => new
                 {
-                    deviceId = device.DeviceId,
                     level = r.Level,
                     message = r.Message,
                     logTime = r.LogTime
                 }).ToArray()
             };
 
-            var success = await _cloudHttp.PostAsync("/api/v1/DeviceLog", payload);
+            var success = await _cloudHttp.PostAsync(_endpointProvider.GetDeviceLogPath(), payload);
             if (!success)
                 return false; // 这批失败，下轮再来
 

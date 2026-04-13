@@ -1,5 +1,6 @@
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline;
+using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.DataPipeline.Stores;
 using IIoT.Edge.Contracts.DataPipeline.SyncTask;
 using IIoT.Edge.Contracts.Device;
@@ -19,8 +20,9 @@ public sealed class TestRetryTask : RetryTask
         IDeviceService              deviceService,
         IEnumerable<ICellDataConsumer> consumers,
         IDeviceLogSyncTask?         deviceLogSync = null,
-        ICapacitySyncTask?          capacitySync  = null)
-        : base("Cloud", logger, failedStore, deviceService, consumers, deviceLogSync, capacitySync)
+        ICapacitySyncTask?          capacitySync  = null,
+        ICloudBatchConsumer?        cloudBatchConsumer = null)
+        : base("Cloud", logger, failedStore, deviceService, consumers, deviceLogSync, capacitySync, cloudBatchConsumer)
     {
     }
 

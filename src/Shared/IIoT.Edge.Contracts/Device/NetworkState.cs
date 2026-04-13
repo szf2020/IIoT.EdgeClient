@@ -4,7 +4,7 @@
 /// 设备网络状态枚举
 /// 
 /// 由 DeviceService 心跳循环维护
-/// 心跳 = 定时调用云端寻址接口 GET /device/mac/{mac}
+/// 心跳 = 定时调用云端寻址接口 GET /device/instance?macAddress=...&clientCode=...
 /// 通了就是 Online，不通就是 Offline
 /// </summary>
 public enum NetworkState

@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using IIoT.Edge.Common.DataPipeline;
 using IIoT.Edge.Common.DataPipeline.CellData;
+using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.DataPipeline.Consumers;
 using IIoT.Edge.Contracts.Device;
@@ -12,9 +13,10 @@ namespace IIoT.Edge.CloudSync.PassStation;
 /// 云端过站数据上报消费者
 /// 消费链 Order=20
 /// </summary>
-public class CloudConsumer : ICloudConsumer
+public class CloudConsumer : ICloudConsumer, ICloudBatchConsumer
 {
     private readonly ICloudHttpClient _cloudHttp;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
     private readonly IDeviceService _deviceService;
     private readonly IMapper _mapper;
     private readonly ILogService _logger;
@@ -25,66 +27,69 @@ public class CloudConsumer : ICloudConsumer
 
     public CloudConsumer(
         ICloudHttpClient cloudHttp,
+        ICloudApiEndpointProvider endpointProvider,
         IDeviceService deviceService,
         IMapper mapper,
         ILogService logger)
     {
         _cloudHttp = cloudHttp;
+        _endpointProvider = endpointProvider;
         _deviceService = deviceService;
         _mapper = mapper;
         _logger = logger;
     }
 
-    public async Task<bool> ProcessAsync(CellCompletedRecord record)
+    public Task<bool> ProcessAsync(CellCompletedRecord record)
+        => ProcessBatchAsync([record]);
+
+    public async Task<bool> ProcessBatchAsync(IReadOnlyList<CellCompletedRecord> records)
     {
-        var cellData = record.CellData;
-        var label = cellData.DisplayLabel;
+        if (records.Count == 0)
+            return true;
 
         var device = _deviceService.CurrentDevice;
         if (device is null)
         {
-            _logger.Warn($"[Cloud] 设备未寻址，跳过上报，{label}");
+            _logger.Warn("[Cloud] 设备未寻址，跳过上报");
             return true;
         }
 
         if (_deviceService.CurrentState == NetworkState.Offline)
         {
-            _logger.Warn($"[Cloud] 网络离线，{label} 转入重传队列");
+            _logger.Warn($"[Cloud] 网络离线，{records.Count} 条数据转入重传队列");
             return false;
         }
 
-        var (url, dto) = MapToCloudDto(cellData, device.DeviceId);
-        if (dto is null)
+        var items = new List<InjectionCloudDto>(records.Count);
+
+        foreach (var record in records)
         {
-            _logger.Error($"[Cloud] 不支持的工序类型: {cellData.ProcessType}，{label}");
-            return false;
+            if (record.CellData is not InjectionCellData injection)
+            {
+                _logger.Error($"[Cloud] 不支持的工序类型: {record.CellData.ProcessType}，{record.CellData.DisplayLabel}");
+                return false;
+            }
+
+            items.Add(MapInjection(injection));
         }
 
-        var success = await _cloudHttp.PostAsync(url, dto);
+        var payload = new
+        {
+            deviceId = device.DeviceId,
+            items
+        };
+
+        var success = await _cloudHttp.PostAsync(_endpointProvider.GetPassStationInjectionBatchPath(), payload);
 
         if (success)
             return true;
 
-        _logger.Error($"[Cloud] 上报失败，{label}");
+        _logger.Error($"[Cloud] 批量上报失败，条数={records.Count}");
         return false;
     }
 
-    private (string url, object? dto) MapToCloudDto(CellDataBase cellData, Guid cloudDeviceId)
+    private InjectionCloudDto MapInjection(InjectionCellData data)
     {
-        return cellData switch
-        {
-            InjectionCellData injection => (
-                "/api/v1/PassStation/injection",
-                MapInjection(injection, cloudDeviceId)
-            ),
-            _ => (string.Empty, null)
-        };
-    }
-
-    private object MapInjection(InjectionCellData data, Guid cloudDeviceId)
-    {
-        var dto = _mapper.Map<InjectionCloudDto>(data);
-        dto.DeviceId = cloudDeviceId;
-        return dto;
+        return _mapper.Map<InjectionCloudDto>(data);
     }
 }

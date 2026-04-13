@@ -3,7 +3,7 @@
 /// <summary>
 /// 设备会话信息
 /// 
-/// 心跳寻址成功后生成，MAC 地址是唯一标识
+/// 心跳寻址成功后生成，云端实例身份是 MAC + ClientCode
 /// DeviceId 是云端分配的内部 ID，用于数据上报
 /// DeviceName 纯显示用
 /// 
@@ -23,7 +23,7 @@ public record DeviceSession
     public string DeviceName { get; init; } = string.Empty;
 
     /// <summary>
-    /// 本机 MAC 地址（唯一标识）
+    /// 设备实例标识（用于云端寻址，字段名沿用 MacAddress 兼容既有代码）
     /// </summary>
     public string MacAddress { get; init; } = string.Empty;
 

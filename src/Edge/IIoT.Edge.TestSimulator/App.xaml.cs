@@ -89,6 +89,7 @@ public partial class App : Application
 
         services.AddSingleton<SimCloudConsumer>();
         services.AddSingleton<ICloudConsumer>(sp => sp.GetRequiredService<SimCloudConsumer>());
+        services.AddSingleton<ICloudBatchConsumer>(sp => sp.GetRequiredService<SimCloudConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICloudConsumer>());
 
         // ── DataPipeline 核心 ────────────────────────────────────
@@ -103,7 +104,8 @@ public partial class App : Application
             sp.GetRequiredService<IDeviceService>(),
             sp.GetServices<ICellDataConsumer>(),
             sp.GetRequiredService<IDeviceLogSyncTask>(),
-            sp.GetRequiredService<ICapacitySyncTask>()));
+            sp.GetRequiredService<ICapacitySyncTask>(),
+            sp.GetService<ICloudBatchConsumer>()));
 
         // ── 辅助服务 ─────────────────────────────────────────────
         services.AddSingleton<SimDataHelper>();

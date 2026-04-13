@@ -1,4 +1,5 @@
 ﻿using IIoT.Edge.Common.DataPipeline.Recipe;
+using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Device;
 using IIoT.Edge.Contracts.Recipe;
@@ -10,6 +11,7 @@ namespace IIoT.Edge.CloudSync.Recipe;
 public class RecipeService : IRecipeService
 {
     private readonly ICloudHttpClient _cloudHttp;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
     private readonly IDeviceService _deviceService;
     private readonly ILogService _logger;
     private readonly string _recipeDir;
@@ -26,10 +28,12 @@ public class RecipeService : IRecipeService
 
     public RecipeService(
         ICloudHttpClient cloudHttp,
+        ICloudApiEndpointProvider endpointProvider,
         IDeviceService deviceService,
         ILogService logger)
     {
         _cloudHttp = cloudHttp;
+        _endpointProvider = endpointProvider;
         _deviceService = deviceService;
         _logger = logger;
 
@@ -90,7 +94,7 @@ public class RecipeService : IRecipeService
             return false;
         }
 
-        var url = $"/api/v1/Recipe/device/{device.DeviceId}";
+        var url = _endpointProvider.BuildRecipeByDevicePath(device.DeviceId);
         var json = await _cloudHttp.GetAsync(url);
 
         if (json is null)

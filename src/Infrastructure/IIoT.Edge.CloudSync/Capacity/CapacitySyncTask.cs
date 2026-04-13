@@ -1,4 +1,5 @@
 ﻿using IIoT.Edge.Common.DataPipeline.Capacity;
+using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Context;
 using IIoT.Edge.Contracts.DataPipeline;
@@ -20,6 +21,7 @@ namespace IIoT.Edge.CloudSync.Capacity;
 public class CapacitySyncTask : ICapacitySyncTask
 {
     private readonly ICloudHttpClient _cloudHttp;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
     private readonly IDeviceService _deviceService;
     private readonly IProductionContextStore _contextStore;
     private readonly ICapacityBufferStore _bufferStore;
@@ -33,6 +35,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     public CapacitySyncTask(
         ICloudHttpClient cloudHttp,
+        ICloudApiEndpointProvider endpointProvider,
         IDeviceService deviceService,
         IProductionContextStore contextStore,
         ICapacityBufferStore bufferStore,
@@ -40,6 +43,7 @@ public class CapacitySyncTask : ICapacitySyncTask
         ShiftConfig shiftConfig)
     {
         _cloudHttp = cloudHttp;
+        _endpointProvider = endpointProvider;
         _deviceService = deviceService;
         _contextStore = contextStore;
         _bufferStore = bufferStore;
@@ -147,7 +151,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
         };
 
-        var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
+        var success = await _cloudHttp.PostAsync(_endpointProvider.GetCapacityHourlyPath(), payload);
 
         if (success)
             _logger.Info($"[CapacitySync] [{plcName}] {date} {hour:D2}:{minute:D2}/{shiftCode} " +
@@ -187,7 +191,7 @@ public class CapacitySyncTask : ICapacitySyncTask
 
             };
 
-            var success = await _cloudHttp.PostAsync("/api/v1/Capacity/hourly", payload);
+            var success = await _cloudHttp.PostAsync(_endpointProvider.GetCapacityHourlyPath(), payload);
             if (!success)
             {
                 _logger.Warn($"[重传-Cloud] 产能半小时补传失败 {s.Date} {s.Hour:D2}:{s.MinuteBucket:D2}/{s.ShiftCode}");

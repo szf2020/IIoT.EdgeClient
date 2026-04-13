@@ -121,8 +121,14 @@ namespace IIoT.Edge.UI.Shared.Widgets.Login
                 else
                 {
                     var deviceId = _deviceService.CurrentDevice?.DeviceId;
+                    if (deviceId is null || deviceId == Guid.Empty)
+                    {
+                        ErrorMessage = "设备尚未完成云端寻址，请稍后重试";
+                        return;
+                    }
+
                     result = await _authService.LoginCloudAsync(
-                        EmployeeNo, Password, deviceId);
+                        EmployeeNo, Password, deviceId.Value);
                 }
 
                 if (result.Success)

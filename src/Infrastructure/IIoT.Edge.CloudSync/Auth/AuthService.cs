@@ -12,15 +12,20 @@ namespace IIoT.Edge.CloudSync.Auth
     public class AuthService : IAuthService
     {
         private readonly HttpClient _httpClient;
+        private readonly ICloudApiEndpointProvider _endpointProvider;
         private readonly LocalAdminConfig _localAdminConfig;
 
         public UserSession? CurrentUser { get; private set; }
         public bool IsAuthenticated => CurrentUser is not null;
         public event Action<UserSession?>? AuthStateChanged;
 
-        public AuthService(HttpClient httpClient, LocalAdminConfig localAdminConfig)
+        public AuthService(
+            HttpClient httpClient,
+            ICloudApiEndpointProvider endpointProvider,
+            LocalAdminConfig localAdminConfig)
         {
             _httpClient = httpClient;
+            _endpointProvider = endpointProvider;
             _localAdminConfig = localAdminConfig;
         }
 
@@ -56,12 +61,13 @@ namespace IIoT.Edge.CloudSync.Auth
         public async Task<AuthResult> LoginCloudAsync(
             string employeeNo,
             string password,
-            Guid? deviceId = null)
+            Guid deviceId)
         {
             try
             {
+                var loginUrl = _endpointProvider.BuildUrl(_endpointProvider.GetIdentityDeviceLoginPath());
                 var response = await _httpClient.PostAsJsonAsync(
-                    "/api/v1/Identity/device-login",
+                    loginUrl,
                     new
                     {
                         employeeNo,

@@ -40,6 +40,10 @@ public static class DependencyInjection
             IConfiguration configuration,
             string dbDir)
     {
+        // Ensure IConfiguration is resolvable by downstream services
+        // (e.g. CloudApiEndpointProvider constructor injection).
+        services.AddSingleton<IConfiguration>(configuration);
+
         // ── 数据库路径 ───────────────────────────────
         var efDbPath = Path.Combine(dbDir, "edge.db");
 

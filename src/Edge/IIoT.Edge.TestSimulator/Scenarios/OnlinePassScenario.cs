@@ -69,11 +69,17 @@ public sealed class OnlinePassScenario : ITestScenario
             var failedCount   = await _failedStore.GetCountAsync("Cloud");
             var bufferCount   = await _bufferStore.GetCountAsync();
             var capacityTotal = _capacityStore.GetSnapshot("TestDevice").TotalAll;
+            var hasLegacyIdentityField = _httpClient.PayloadHistory.Any(p =>
+                p.Contains("\"macAddress\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"mac_address\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"clientCode\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"client_code\"", StringComparison.OrdinalIgnoreCase));
 
             assertions.Add(Assert("FakeHttpClient.CallCount == 3",    callCount     == 3, "3", callCount.ToString()));
             assertions.Add(Assert("FailedRecordStore(Cloud) == 0",    failedCount   == 0, "0", failedCount.ToString()));
             assertions.Add(Assert("CapacityBufferStore == 0",         bufferCount   == 0, "0", bufferCount.ToString()));
             assertions.Add(Assert("TodayCapacity.TotalAll == 3",      capacityTotal == 3, "3", capacityTotal.ToString()));
+            assertions.Add(Assert("Payload has no mac/clientCode",   !hasLegacyIdentityField, "false", hasLegacyIdentityField.ToString()));
         }
         catch (Exception ex)
         {

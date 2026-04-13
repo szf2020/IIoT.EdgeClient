@@ -66,10 +66,19 @@ public sealed class RetryScenario : ITestScenario
             var failedCount = await _failedStore.GetCountAsync("Cloud");
             var bufferCount = await _bufferStore.GetCountAsync();
             var callCount   = _httpClient.CallCount;
+            var batchCalls = _httpClient.UrlHistory.Count(u =>
+                u.Contains("/api/test/passstation/batch", StringComparison.OrdinalIgnoreCase));
+            var hasLegacyIdentityField = _httpClient.PayloadHistory.Any(p =>
+                p.Contains("\"macAddress\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"mac_address\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"clientCode\"", StringComparison.OrdinalIgnoreCase) ||
+                p.Contains("\"client_code\"", StringComparison.OrdinalIgnoreCase));
 
             assertions.Add(Assert("FailedRecordStore(Cloud) == 0", failedCount == 0,    "0",   failedCount.ToString()));
             assertions.Add(Assert("CapacityBufferStore == 0",       bufferCount == 0,    "0",   bufferCount.ToString()));
-            assertions.Add(Assert("FakeHttpClient.CallCount >= 5",  callCount   >= 5, ">=5",  callCount.ToString()));
+            assertions.Add(Assert("SimCloud batch call == 1",       batchCalls  == 1,    "1",   batchCalls.ToString()));
+            assertions.Add(Assert("FakeHttpClient.CallCount >= 2",  callCount   >= 2,   ">=2", callCount.ToString()));
+            assertions.Add(Assert("Payload has no mac/clientCode", !hasLegacyIdentityField, "false", hasLegacyIdentityField.ToString()));
         }
         catch (Exception ex)
         {

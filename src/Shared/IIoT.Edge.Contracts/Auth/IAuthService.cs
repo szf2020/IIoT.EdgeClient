@@ -13,12 +13,12 @@ namespace IIoT.Edge.Contracts.Auth
         Task<AuthResult> LoginLocalAsync(string password);
 
         /// <summary>
-        /// 云端设备登录，deviceId 为 null 时云端会拒绝非Admin登录
+        /// 云端设备登录，必须携带已寻址成功的 DeviceId
         /// </summary>
         Task<AuthResult> LoginCloudAsync(
             string employeeNo,
             string password,
-            Guid? deviceId = null);
+            Guid deviceId);
 
         void Logout();
 

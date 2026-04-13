@@ -1,5 +1,5 @@
 ﻿using System.Net.Http.Json;
-using System.Net.NetworkInformation;
+using IIoT.Edge.CloudSync.Config;
 using IIoT.Edge.Contracts;
 using IIoT.Edge.Contracts.Device;
 
@@ -9,18 +9,20 @@ namespace IIoT.Edge.CloudSync.Device;
 /// 设备服务实现
 /// 
 /// 核心职责：
-///   1. 读取本机 MAC 地址作为唯一标识
+///   1. 读取稳定实例标识，并结合 ClientCode 进行云端寻址
 ///   2. 心跳循环：定时调云端寻址接口探测网络状态
 ///   3. 维护 Online / Offline 状态，切换时发布事件
 ///   4. 本地文件缓存 DeviceSession，断网时可用
 /// 
 /// 心跳策略：
-///   Online  → 5 分钟一次
-///   Offline → 30 秒一次
+///   Online  → 1 分钟一次
+///   Offline → 10 秒一次
 /// </summary>
 public class DeviceService : IDeviceService
 {
     private readonly HttpClient _httpClient;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
+    private readonly IDeviceInstanceIdResolver _instanceIdResolver;
     private readonly ILogService _logger;
     private readonly object _stateLock = new();
 
@@ -40,9 +42,15 @@ public class DeviceService : IDeviceService
     public event Action<NetworkState>? NetworkStateChanged;
     public event Action<DeviceSession?>? DeviceIdentified;
 
-    public DeviceService(HttpClient httpClient, ILogService logger)
+    public DeviceService(
+        HttpClient httpClient,
+        ICloudApiEndpointProvider endpointProvider,
+        IDeviceInstanceIdResolver instanceIdResolver,
+        ILogService logger)
     {
         _httpClient = httpClient;
+        _endpointProvider = endpointProvider;
+        _instanceIdResolver = instanceIdResolver;
         _logger = logger;
     }
 
@@ -106,18 +114,23 @@ public class DeviceService : IDeviceService
 
     private async Task IdentifyOnceAsync()
     {
-        var mac = GetMacAddress();
+        var instanceId = _instanceIdResolver.ResolveInstanceId();
 
         try
         {
+            var clientCode = _endpointProvider.GetClientCode();
+            var deviceInstancePath = _endpointProvider.GetDeviceInstancePath();
+            var url = _endpointProvider.BuildUrl(
+                $"{deviceInstancePath}?macAddress={Uri.EscapeDataString(instanceId)}&clientCode={Uri.EscapeDataString(clientCode)}");
+
             var response = await _httpClient
-                .GetAsync($"/api/v1/Device/mac/{mac}")
+                .GetAsync(url)
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.Warn($"[DeviceService] 云端寻址失败: {response.StatusCode}  MAC码：{mac}");
-                GoOffline(mac);
+                _logger.Warn($"[DeviceService] 云端寻址失败: {response.StatusCode}");
+                GoOffline(instanceId);
                 return;
             }
 
@@ -128,7 +141,7 @@ public class DeviceService : IDeviceService
             if (dto is null)
             {
                 _logger.Warn("[DeviceService] 云端返回数据为空");
-                GoOffline(mac);
+                GoOffline(instanceId);
                 return;
             }
 
@@ -136,7 +149,7 @@ public class DeviceService : IDeviceService
             {
                 DeviceId = dto.Id,
                 DeviceName = dto.DeviceName,
-                MacAddress = mac,
+                MacAddress = instanceId,
                 ProcessId = dto.ProcessId
             };
 
@@ -145,17 +158,17 @@ public class DeviceService : IDeviceService
         catch (TaskCanceledException)
         {
             _logger.Warn("[DeviceService] 云端寻址超时");
-            GoOffline(mac);
+            GoOffline(instanceId);
         }
         catch (HttpRequestException ex)
         {
             _logger.Warn($"[DeviceService] 网络异常: {ex.Message}");
-            GoOffline(mac);
+            GoOffline(instanceId);
         }
         catch (Exception ex)
         {
             _logger.Error($"[DeviceService] 寻址异常: {ex.Message}");
-            GoOffline(mac);
+            GoOffline(instanceId);
         }
     }
 
@@ -175,7 +188,7 @@ public class DeviceService : IDeviceService
 
             if (deviceChanged)
             {
-                _logger.Info($"[DeviceService] 设备信息更新: {session.DeviceName} ({session.MacAddress})");
+                _logger.Info($"[DeviceService] 设备信息更新: {session.DeviceName}");
                 DeviceIdentified?.Invoke(CurrentDevice);
             }
 
@@ -188,14 +201,14 @@ public class DeviceService : IDeviceService
         }
     }
 
-    private void GoOffline(string mac)
+    private void GoOffline(string instanceId)
     {
         lock (_stateLock)
         {
             // 首次离线且没有 DeviceSession，尝试读缓存
             if (CurrentDevice is null)
             {
-                TryLoadFromCache(mac);
+                TryLoadFromCache(instanceId);
             }
 
             if (CurrentState != NetworkState.Offline)
@@ -205,18 +218,6 @@ public class DeviceService : IDeviceService
                 NetworkStateChanged?.Invoke(NetworkState.Offline);
             }
         }
-    }
-
-    // ── MAC 地址 ─────────────────────────────────────────────────
-
-    private static string GetMacAddress()
-    {
-        return NetworkInterface
-            .GetAllNetworkInterfaces()
-            .Where(nic => nic.OperationalStatus == OperationalStatus.Up
-                          && nic.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-            .Select(nic => nic.GetPhysicalAddress().ToString())
-            .FirstOrDefault() ?? "000000000000";
     }
 
     // ── 本地缓存 ─────────────────────────────────────────────────
@@ -234,7 +235,7 @@ public class DeviceService : IDeviceService
         }
     }
 
-    private void TryLoadFromCache(string mac)
+    private void TryLoadFromCache(string instanceId)
     {
         try
         {
@@ -244,8 +245,8 @@ public class DeviceService : IDeviceService
             var session = System.Text.Json.JsonSerializer.Deserialize<DeviceSession>(json);
             if (session is null) return;
 
-            // 用缓存数据，MAC 用当前本机的
-            CurrentDevice = session with { MacAddress = mac };
+            // 用缓存数据，实例标识用当前解析值
+            CurrentDevice = session with { MacAddress = instanceId };
             _logger.Info($"[DeviceService] 加载本地缓存: {session.DeviceName}");
             DeviceIdentified?.Invoke(CurrentDevice);
         }
@@ -255,3 +256,4 @@ public class DeviceService : IDeviceService
         }
     }
 }
+

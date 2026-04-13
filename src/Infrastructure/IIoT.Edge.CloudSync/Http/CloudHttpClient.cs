@@ -1,21 +1,34 @@
-﻿using IIoT.Edge.Contracts.Device;
+﻿using IIoT.Edge.CloudSync.Config;
+using IIoT.Edge.Contracts.Device;
 using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace IIoT.Edge.CloudSync.Http;
 
 /// <summary>
-/// 云端 HTTP 客户端实现
-/// 
-/// 内部使用 IHttpClientFactory 管理连接池
-/// 所有异常内部捕获，返回 bool/null，不向上抛
+/// Cloud HTTP client.
+/// Catches exceptions and returns bool/null.
 /// </summary>
 public class CloudHttpClient : ICloudHttpClient
 {
-    private readonly IHttpClientFactory _httpClientFactory;
+    private static readonly HashSet<string> BlockedIdentityKeys = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "macAddress",
+        "mac_address",
+        "clientCode",
+        "client_code"
+    };
 
-    public CloudHttpClient(IHttpClientFactory httpClientFactory)
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ICloudApiEndpointProvider _endpointProvider;
+
+    public CloudHttpClient(
+        IHttpClientFactory httpClientFactory,
+        ICloudApiEndpointProvider endpointProvider)
     {
         _httpClientFactory = httpClientFactory;
+        _endpointProvider = endpointProvider;
     }
 
     public async Task<bool> PostAsync(string url, object payload)
@@ -23,8 +36,11 @@ public class CloudHttpClient : ICloudHttpClient
         try
         {
             var client = _httpClientFactory.CreateClient("CloudApi");
+            var requestUrl = _endpointProvider.BuildUrl(url);
+            var sanitizedPayload = SanitizePayload(payload);
+
             var response = await client
-                .PostAsJsonAsync(url, payload)
+                .PostAsJsonAsync(requestUrl, sanitizedPayload)
                 .ConfigureAwait(false);
 
             return response.IsSuccessStatusCode;
@@ -40,8 +56,11 @@ public class CloudHttpClient : ICloudHttpClient
         try
         {
             var client = _httpClientFactory.CreateClient("CloudApi");
+            var requestUrl = _endpointProvider.BuildUrl(url);
+            var sanitizedPayload = SanitizePayload(payload);
+
             var response = await client
-                .PostAsJsonAsync(url, payload)
+                .PostAsJsonAsync(requestUrl, sanitizedPayload)
                 .ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
@@ -60,8 +79,9 @@ public class CloudHttpClient : ICloudHttpClient
         try
         {
             var client = _httpClientFactory.CreateClient("CloudApi");
+            var requestUrl = _endpointProvider.BuildUrl(url);
             var response = await client
-                .GetAsync(url)
+                .GetAsync(requestUrl)
                 .ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
@@ -72,6 +92,57 @@ public class CloudHttpClient : ICloudHttpClient
         catch
         {
             return null;
+        }
+    }
+
+    private static object SanitizePayload(object payload)
+    {
+        JsonNode? node;
+
+        try
+        {
+            node = JsonSerializer.SerializeToNode(payload);
+        }
+        catch
+        {
+            return payload;
+        }
+
+        if (node is null)
+            return payload;
+
+        RemoveBlockedKeysRecursively(node);
+        return node;
+    }
+
+    private static void RemoveBlockedKeysRecursively(JsonNode node)
+    {
+        if (node is JsonObject obj)
+        {
+            var keysToRemove = obj
+                .Select(kv => kv.Key)
+                .Where(k => BlockedIdentityKeys.Contains(k))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+                obj.Remove(key);
+
+            foreach (var kv in obj.ToList())
+            {
+                if (kv.Value is not null)
+                    RemoveBlockedKeysRecursively(kv.Value);
+            }
+
+            return;
+        }
+
+        if (node is JsonArray arr)
+        {
+            foreach (var item in arr)
+            {
+                if (item is not null)
+                    RemoveBlockedKeysRecursively(item);
+            }
         }
     }
 }
