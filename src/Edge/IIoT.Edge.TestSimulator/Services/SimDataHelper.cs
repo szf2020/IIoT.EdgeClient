@@ -1,11 +1,11 @@
-using IIoT.Edge.Infrastructure.Dapper.Connection;
+using IIoT.Edge.Infrastructure.Persistence.Dapper.Connection;
 using System.Data;
 
 namespace IIoT.Edge.TestSimulator.Services;
 
 /// <summary>
 /// 测试专用数据库辅助工具
-/// 直接操作 SQLite，用于测试前/后的数据清理和状态准备
+/// 直接操作 SQLite，用于测试前后清理和状态准备
 /// </summary>
 public sealed class SimDataHelper
 {
@@ -17,8 +17,7 @@ public sealed class SimDataHelper
     }
 
     /// <summary>
-    /// 将 failed_cell_records 里的 NextRetryTime 全部置为过去
-    /// 解除 30 秒冷却限制，让 RetryTask 立即可以捞到记录
+    /// 将 failed_cell_records 的 NextRetryTime 设置为可立即重试的时间点
     /// </summary>
     public async Task ResetRetryTimesAsync()
     {
@@ -43,7 +42,7 @@ public sealed class SimDataHelper
         await ExecuteAsync("pipeline", "DELETE FROM device_log_buffer");
     }
 
-    // ── 内部辅助 ────────────────────────────────────────────────
+    // 内部数据库执行辅助
 
     private Task ExecuteAsync(string dbName, string sql,
         Action<IDbCommand>? bindParams = null)

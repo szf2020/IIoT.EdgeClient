@@ -3,7 +3,7 @@ using System.Windows.Data;
 
 namespace IIoT.Edge.TestSimulator.Views;
 
-/// <summary>bool → bool 取反（用于按钮 IsEnabled 绑定）</summary>
+/// <summary>bool 转换为 !bool，用于按钮 IsEnabled 绑定。</summary>
 [ValueConversion(typeof(bool), typeof(bool))]
 public sealed class InvertBoolConverter : IValueConverter
 {
@@ -13,3 +13,4 @@ public sealed class InvertBoolConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         => value is bool b && !b;
 }
+

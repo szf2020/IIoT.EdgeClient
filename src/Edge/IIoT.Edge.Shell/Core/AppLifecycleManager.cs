@@ -1,17 +1,14 @@
-﻿using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.Context;
-using IIoT.Edge.Contracts.DataPipeline;
-using IIoT.Edge.Contracts.DataPipeline.SyncTask;
-using IIoT.Edge.Contracts.Device;
-using IIoT.Edge.Contracts.Plc;
-using IIoT.Edge.Contracts.Recipe;
-using IIoT.Edge.Tasks.DataPipeline;
+﻿using IIoT.Edge.Application.Abstractions.Context;
+using IIoT.Edge.Application.Abstractions.DataPipeline;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.Device;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.Plc;
+using IIoT.Edge.Application.Abstractions.Recipe;
+using IIoT.Edge.Runtime.DataPipeline;
 
 namespace IIoT.Edge.Shell.Core;
 
-/// <summary>
-/// 应用生命周期管理器
-/// </summary>
 public class AppLifecycleManager
 {
     private readonly IProductionContextStore _contextStore;
@@ -21,7 +18,6 @@ public class AppLifecycleManager
     private readonly IRecipeService _recipeService;
     private readonly IPlcConnectionManager _plcManager;
     private readonly ILogService _logger;
-
     private readonly List<Task> _backgroundTasks = new();
 
     public AppLifecycleManager(
@@ -46,7 +42,7 @@ public class AppLifecycleManager
     {
         _contextStore.LoadFromFile();
         _recipeService.LoadFromFile();
-        _logger.Info("[Lifecycle] 生产上下文 + 配方数据已加载");
+        _logger.Info("[Lifecycle] Restored persisted runtime state.");
     }
 
     public void StartAll(IServiceProvider sp, CancellationToken ct)
@@ -54,28 +50,31 @@ public class AppLifecycleManager
         _backgroundTasks.Add(_contextStore.StartAutoSaveAsync(ct, intervalSeconds: 30));
         _backgroundTasks.Add(_deviceService.StartAsync(ct));
         _backgroundTasks.Add(sp.InitializePlcTasksAsync(ct));
-        _backgroundTasks.Add(sp.StartDataPipelineAsync(ct));
+        _backgroundTasks.Add(sp.StartEdgeDataPipelineRuntimeAsync(ct));
         _backgroundTasks.Add(_capacitySync.StartAsync(ct));
         _backgroundTasks.Add(_deviceLogSync.StartAsync(ct));
 
-        _logger.Info("[Lifecycle] 所有后台服务已启动");
+        _logger.Info("[Lifecycle] Background services started.");
     }
 
     public void Shutdown()
     {
         _contextStore.SaveToFile();
         _recipeService.SaveToFile();
-        _logger.Info("[Lifecycle] 生产上下文 + 配方数据已保存");
+        _logger.Info("[Lifecycle] Persisted runtime state before shutdown.");
 
-        // 等待所有后台 Task 在 CancellationToken 取消后退出（最多 8 秒）
         if (_backgroundTasks.Count > 0)
         {
-            try { Task.WhenAll(_backgroundTasks).Wait(TimeSpan.FromSeconds(8)); }
-            catch { /* OperationCanceledException / timeout，继续强制清理 */ }
+            try
+            {
+                Task.WhenAll(_backgroundTasks).Wait(TimeSpan.FromSeconds(8));
+            }
+            catch
+            {
+            }
         }
 
         _plcManager.Dispose();
-
-        _logger.Info("[Lifecycle] 所有服务已停止");
+        _logger.Info("[Lifecycle] Background services stopped.");
     }
 }

@@ -1,16 +1,16 @@
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline;
-using IIoT.Edge.Contracts.DataPipeline.Consumers;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.DataPipeline.SyncTask;
-using IIoT.Edge.Contracts.Device;
-using IIoT.Edge.Tasks.DataPipeline.Tasks;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.Device;
+using IIoT.Edge.Runtime.DataPipeline.Tasks;
 
 namespace IIoT.Edge.TestSimulator.Tasks;
 
 /// <summary>
-/// 继承 RetryTask，对外暴露 TriggerAsync() 供场景立即触发一轮重传
-/// 不等 5 秒定时器，测试直接调用即可
+/// 模拟场景可直接触发的重试任务
+/// 用于测试时立即执行一轮重试流程
 /// </summary>
 public sealed class TestRetryTask : RetryTask
 {
@@ -26,6 +26,6 @@ public sealed class TestRetryTask : RetryTask
     {
     }
 
-    /// <summary>立即执行一轮重传逻辑（绕过 5 秒定时间隔）</summary>
+    /// <summary>立即执行一轮重试流程（仅用于模拟场景）</summary>
     public Task TriggerAsync() => ExecuteAsync();
 }

@@ -1,12 +1,11 @@
-// 路径：src/Edge/IIoT.Edge.Shell/ViewModels/MainWindowViewModel.cs
-using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Module.Production.Equipment;
-using IIoT.Edge.Module.SysLog;
+using IIoT.Edge.UI.Shared.Mvvm;
+using IIoT.Edge.Presentation.Panels.Features.Equipment;
+using IIoT.Edge.Presentation.Panels.Features.SysLog;
 using IIoT.Edge.UI.Shared.Modularity;
-using IIoT.Edge.UI.Shared.Widgets.Footer;
-using IIoT.Edge.UI.Shared.Widgets.Login;
-using IIoT.Edge.UI.Shared.Widgets.SysMenu;
-using IIoT.Edge.UI.Shared.Widgets.SystemHeader;
+using IIoT.Edge.Presentation.Shell.Features.Footer;
+using IIoT.Edge.Presentation.Shell.Features.Login;
+using IIoT.Edge.Presentation.Shell.Features.SysMenu;
+using IIoT.Edge.Presentation.Shell.Features.Header;
 using System.Windows;
 
 namespace IIoT.Edge.Shell.ViewModels;
@@ -15,22 +14,22 @@ public class MainWindowViewModel : BaseNotifyPropertyChanged
 {
     private readonly INavigationService _navigationService;
 
-    public HeaderWidget HeaderViewModel { get; }
-    public SysMenuWidget SysMenuViewModel { get; }
-    public LoginWidget LoginViewModel { get; }
-    public FooterWidget FooterViewModel { get; }
-    public LogWidget LogViewModel { get; }
-    public EquipmentWidget EquipmentViewModel { get; }
+    public HeaderViewModel HeaderViewModel { get; }
+    public SysMenuViewModel SysMenuViewModel { get; }
+    public LoginViewModel LoginViewModel { get; }
+    public FooterViewModel FooterViewModel { get; }
+    public LogViewModel LogViewModel { get; }
+    public EquipmentViewModel EquipmentViewModel { get; }
 
     public FrameworkElement? CurrentView => _navigationService.CurrentView;
 
     public MainWindowViewModel(
-        HeaderWidget headerWidget,
-        SysMenuWidget sysMenuWidget,
-        LoginWidget loginWidget,
-        FooterWidget footerWidget,
-        LogWidget logWidget,
-        EquipmentWidget equipmentWidget,
+        HeaderViewModel headerWidget,
+        SysMenuViewModel sysMenuWidget,
+        LoginViewModel loginWidget,
+        FooterViewModel footerWidget,
+        LogViewModel logWidget,
+        EquipmentViewModel equipmentWidget,
         INavigationService navigationService)
     {
         HeaderViewModel = headerWidget;
@@ -44,3 +43,4 @@ public class MainWindowViewModel : BaseNotifyPropertyChanged
         _navigationService.Navigated += _ => OnPropertyChanged(nameof(CurrentView));
     }
 }
+

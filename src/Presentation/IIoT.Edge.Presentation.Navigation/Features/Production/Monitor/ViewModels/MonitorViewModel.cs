@@ -1,0 +1,203 @@
+using IIoT.Edge.Application.Features.Production.Monitor;
+using IIoT.Edge.UI.Shared.Mvvm;
+using IIoT.Edge.UI.Shared.PluginSystem;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.Windows.Threading;
+
+namespace IIoT.Edge.Presentation.Navigation.Features.Production.Monitor;
+
+/// <summary>
+/// 实时数据监控页面视图模型。
+/// 用于展示设备监控数据。
+/// </summary>
+public class MonitorViewModel : PresentationViewModelBase
+{
+    public override string ViewId => "Production.Monitor";
+    public override string ViewTitle => "实时数据监控";
+
+    private readonly IMonitorViewService _monitorViewService;
+    private readonly DispatcherTimer _refreshTimer;
+
+    public ObservableCollection<DeviceTabVm> DeviceTabs { get; } = new();
+
+    private int _selectedTabIndex;
+    public int SelectedTabIndex
+    {
+        get => _selectedTabIndex;
+        set { _selectedTabIndex = value; OnPropertyChanged(); }
+    }
+
+    public MonitorViewModel(IMonitorViewService monitorViewService)
+    {
+        _monitorViewService = monitorViewService;
+
+        _refreshTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _refreshTimer.Tick += (_, _) => RunViewTaskInBackground(RefreshAsync, "数据更新失败");
+        _refreshTimer.Start();
+    }
+
+    public override async Task OnActivatedAsync()
+    {
+        await RunViewTaskAsync(RefreshAsync, "监控数据加载失败");
+    }
+
+    private async Task RefreshAsync()
+    {
+        var snapshots = await _monitorViewService.GetSnapshotsAsync();
+
+        SyncItemsByKey(
+            DeviceTabs,
+            snapshots,
+            tab => tab.DeviceName,
+            snapshot => snapshot.DeviceName,
+            snapshot => new DeviceTabVm { DeviceName = snapshot.DeviceName },
+            (tab, snapshot) =>
+            {
+                tab.DayShiftOk = snapshot.DayShiftOk;
+                tab.DayShiftNg = snapshot.DayShiftNg;
+                tab.DayShiftTotal = snapshot.DayShiftTotal;
+                tab.DayShiftYield = snapshot.DayShiftYield;
+                tab.NightShiftOk = snapshot.NightShiftOk;
+                tab.NightShiftNg = snapshot.NightShiftNg;
+                tab.NightShiftTotal = snapshot.NightShiftTotal;
+                tab.NightShiftYield = snapshot.NightShiftYield;
+                tab.TotalAll = snapshot.TotalAll;
+                tab.OkAll = snapshot.OkAll;
+                tab.NgAll = snapshot.NgAll;
+                tab.YieldAll = snapshot.YieldAll;
+                tab.DeviceDataSummary = snapshot.DeviceDataSummary;
+                tab.StepSummary = snapshot.StepSummary;
+                tab.CellCount = snapshot.CellCount;
+                tab.CellTable = snapshot.CellTable;
+            });
+    }
+}
+
+/// <summary>
+/// 设备监控视图模型。
+/// </summary>
+public class DeviceTabVm : BaseNotifyPropertyChanged
+{
+    private string _deviceName = "";
+    public string DeviceName
+    {
+        get => _deviceName;
+        set { _deviceName = value; OnPropertyChanged(); }
+    }
+
+    private int _dayShiftOk;
+    public int DayShiftOk
+    {
+        get => _dayShiftOk;
+        set { _dayShiftOk = value; OnPropertyChanged(); }
+    }
+
+    private int _dayShiftNg;
+    public int DayShiftNg
+    {
+        get => _dayShiftNg;
+        set { _dayShiftNg = value; OnPropertyChanged(); }
+    }
+
+    private int _dayShiftTotal;
+    public int DayShiftTotal
+    {
+        get => _dayShiftTotal;
+        set { _dayShiftTotal = value; OnPropertyChanged(); }
+    }
+
+    private string _dayShiftYield = "0%";
+    public string DayShiftYield
+    {
+        get => _dayShiftYield;
+        set { _dayShiftYield = value; OnPropertyChanged(); }
+    }
+
+    private int _nightShiftOk;
+    public int NightShiftOk
+    {
+        get => _nightShiftOk;
+        set { _nightShiftOk = value; OnPropertyChanged(); }
+    }
+
+    private int _nightShiftNg;
+    public int NightShiftNg
+    {
+        get => _nightShiftNg;
+        set { _nightShiftNg = value; OnPropertyChanged(); }
+    }
+
+    private int _nightShiftTotal;
+    public int NightShiftTotal
+    {
+        get => _nightShiftTotal;
+        set { _nightShiftTotal = value; OnPropertyChanged(); }
+    }
+
+    private string _nightShiftYield = "0%";
+    public string NightShiftYield
+    {
+        get => _nightShiftYield;
+        set { _nightShiftYield = value; OnPropertyChanged(); }
+    }
+
+    private int _totalAll;
+    public int TotalAll
+    {
+        get => _totalAll;
+        set { _totalAll = value; OnPropertyChanged(); }
+    }
+
+    private int _okAll;
+    public int OkAll
+    {
+        get => _okAll;
+        set { _okAll = value; OnPropertyChanged(); }
+    }
+
+    private int _ngAll;
+    public int NgAll
+    {
+        get => _ngAll;
+        set { _ngAll = value; OnPropertyChanged(); }
+    }
+
+    private string _yieldAll = "0%";
+    public string YieldAll
+    {
+        get => _yieldAll;
+        set { _yieldAll = value; OnPropertyChanged(); }
+    }
+
+    private string _deviceDataSummary = "暂无数据";
+    public string DeviceDataSummary
+    {
+        get => _deviceDataSummary;
+        set { _deviceDataSummary = value; OnPropertyChanged(); }
+    }
+
+    private string _stepSummary = "暂无步骤";
+    public string StepSummary
+    {
+        get => _stepSummary;
+        set { _stepSummary = value; OnPropertyChanged(); }
+    }
+
+    private int _cellCount;
+    public int CellCount
+    {
+        get => _cellCount;
+        set { _cellCount = value; OnPropertyChanged(); }
+    }
+
+    private DataTable? _cellTable;
+    public DataTable? CellTable
+    {
+        get => _cellTable;
+        set { _cellTable = value; OnPropertyChanged(); }
+    }
+}

@@ -1,5 +1,5 @@
-using IIoT.Edge.Common.DataPipeline.Capacity;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
+﻿using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
 
 namespace IIoT.Edge.TestSimulator.Fakes;
 
@@ -24,3 +24,4 @@ public sealed class FakeTodayCapacityStore : ITodayCapacityStore
     /// <summary>清空所有计数（跨场景重置用）</summary>
     public void ResetAll() => _capacity.Reset();
 }
+

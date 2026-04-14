@@ -13,11 +13,16 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5" />
   </ItemGroup>
 
+  <PropertyGroup Condition="'$(SKIP_EDGE_WPF_PROJECTS)' == 'true'">
+    <ExcludeFromBuild>true</ExcludeFromBuild>
+  </PropertyGroup>
+
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\IIoT.Edge.Contracts\IIoT.Edge.Contracts.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Dapper\IIoT.Edge.Infrastructure.Dapper.csproj" />
-    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks\IIoT.Edge.Tasks.csproj" />
-    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks.DataPipeline\IIoT.Edge.Tasks.DataPipeline.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Persistence.Dapper\IIoT.Edge.Infrastructure.Persistence.Dapper.csproj" />
+    <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime\IIoT.Edge.Runtime.csproj" />
+    <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime.DataPipeline\IIoT.Edge.Runtime.DataPipeline.csproj" />
+    <ProjectReference Include="..\..\Application\IIoT.Edge.Application\IIoT.Edge.Application.csproj" />
   </ItemGroup>
 
 </Project>
+

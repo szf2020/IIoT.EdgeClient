@@ -1,19 +1,19 @@
-using IIoT.Edge.Common.DataPipeline.Capacity;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline;
-using IIoT.Edge.Contracts.DataPipeline.Consumers;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.DataPipeline.SyncTask;
-using IIoT.Edge.Contracts.Device;
-using IIoT.Edge.Infrastructure.Dapper;
+using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.Device;
+using IIoT.Edge.Infrastructure.Persistence.Dapper;
 using IIoT.Edge.TestSimulator.Consumers;
 using IIoT.Edge.TestSimulator.Fakes;
 using IIoT.Edge.TestSimulator.Scenarios;
 using IIoT.Edge.TestSimulator.Services;
 using IIoT.Edge.TestSimulator.Tasks;
 using IIoT.Edge.TestSimulator.Views;
-using IIoT.Edge.Tasks.DataPipeline.Services;
-using IIoT.Edge.Tasks.DataPipeline.Tasks;
+using IIoT.Edge.Runtime.DataPipeline.Services;
+using IIoT.Edge.Runtime.DataPipeline.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Windows;
@@ -53,7 +53,7 @@ public partial class App : Application
     {
         var testDbDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
 
-        // ── Fakes ────────────────────────────────────────────────
+        // Fakes
         services.AddSingleton<FakeHttpClient>();
         services.AddSingleton<ICloudHttpClient>(sp => sp.GetRequiredService<FakeHttpClient>());
 
@@ -72,17 +72,17 @@ public partial class App : Application
         services.AddSingleton<FakeDeviceLogSyncTask>();
         services.AddSingleton<IDeviceLogSyncTask>(sp => sp.GetRequiredService<FakeDeviceLogSyncTask>());
 
-        // ── 真实 Dapper Store ────────────────────────────────────
-        services.AddDapperInfrastructure(testDbDir);
+        // 真实 Dapper Store
+        services.AddDapperPersistenceInfrastructure(testDbDir);
 
-        // ── ShiftConfig（历史数据场景需要用到）───────────────────
+        // ShiftConfig（历史数据场景需要用到）
         services.AddSingleton(new ShiftConfig
         {
             DayStart = "08:30",
             DayEnd = "20:30"
         });
 
-        // ── 消费者 ───────────────────────────────────────────────
+        // 消费者
         services.AddSingleton<SimCapacityConsumer>();
         services.AddSingleton<ICapacityConsumer>(sp => sp.GetRequiredService<SimCapacityConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICapacityConsumer>());
@@ -92,12 +92,12 @@ public partial class App : Application
         services.AddSingleton<ICloudBatchConsumer>(sp => sp.GetRequiredService<SimCloudConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICloudConsumer>());
 
-        // ── DataPipeline 核心 ────────────────────────────────────
+        // DataPipeline 核心
         services.AddSingleton<DataPipelineService>();
         services.AddSingleton<IDataPipelineService>(sp => sp.GetRequiredService<DataPipelineService>());
         services.AddSingleton<ProcessQueueTask>();
 
-        // ── TestRetryTask ────────────────────────────────────────
+        // TestRetryTask
         services.AddSingleton<TestRetryTask>(sp => new TestRetryTask(
             sp.GetRequiredService<ILogService>(),
             sp.GetRequiredService<IFailedRecordStore>(),
@@ -107,18 +107,19 @@ public partial class App : Application
             sp.GetRequiredService<ICapacitySyncTask>(),
             sp.GetService<ICloudBatchConsumer>()));
 
-        // ── 辅助服务 ─────────────────────────────────────────────
+        // 辅助服务
         services.AddSingleton<SimDataHelper>();
 
-        // ── 场景 ─────────────────────────────────────────────────
+        // 场景
         services.AddSingleton<OnlinePassScenario>();
         services.AddSingleton<OfflineBufferScenario>();
         services.AddSingleton<RetryScenario>();
-        services.AddSingleton<HistoricalDataScenario>();  // 新增历史数据场景
+        services.AddSingleton<HistoricalDataScenario>();
         services.AddSingleton<ScenarioRunner>();
 
-        // ── Views ────────────────────────────────────────────────
+        // Views
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
     }
 }
+

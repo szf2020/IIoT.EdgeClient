@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,7 +9,12 @@
     <BaseOutputPath>..\..\..\..\publish\</BaseOutputPath>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(SKIP_EDGE_WPF_PROJECTS)' == 'true'">
+    <ExcludeFromBuild>true</ExcludeFromBuild>
+  </PropertyGroup>
+
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="Dirkster.AvalonDock" Version="4.72.1" />
     <PackageReference Include="Dirkster.AvalonDock.Themes.VS2013" Version="4.72.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
@@ -21,20 +26,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.CloudSync\IIoT.Edge.CloudSync.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.DataMapping\IIoT.Edge.DataMapping.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Dapper\IIoT.Edge.Infrastructure.Dapper.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Excel\IIoT.Edge.Infrastructure.Excel.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure\IIoT.Edge.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.PlcDevice\IIoT.Edge.PlcDevice.csproj" />
-    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Config\IIoT.Edge.Module.Config.csproj" />
-    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Formula\IIoT.Edge.Module.Formula.csproj" />
-    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Hardware\IIoT.Edge.Module.Hardware.csproj" />
-    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.Production\IIoT.Edge.Module.Production.csproj" />
-    <ProjectReference Include="..\..\Modules\IIoT.Edge.Module.SysLog\IIoT.Edge.Module.SysLog.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Integration\IIoT.Edge.Infrastructure.Integration.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Persistence.Dapper\IIoT.Edge.Infrastructure.Persistence.Dapper.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Persistence.EfCore\IIoT.Edge.Infrastructure.Persistence.EfCore.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.DeviceComm\IIoT.Edge.Infrastructure.DeviceComm.csproj" />
     <ProjectReference Include="..\..\Shared\IIoT.Edge.UI.Shared\IIoT.Edge.UI.Shared.csproj" />
-    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Task.Scan\IIoT.Edge.Tasks.Scan.csproj" />
-    <ProjectReference Include="..\..\Tasks\IIoT.Edge.Tasks.DataPipeline\IIoT.Edge.Tasks.DataPipeline.csproj" />
+    <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime.Scan\IIoT.Edge.Runtime.Scan.csproj" />
+    <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime.DataPipeline\IIoT.Edge.Runtime.DataPipeline.csproj" />
+    <ProjectReference Include="..\..\Application\IIoT.Edge.Application\IIoT.Edge.Application.csproj" />
+    <ProjectReference Include="..\..\Presentation\IIoT.Edge.Presentation.Shell\IIoT.Edge.Presentation.Shell.csproj" />
+    <ProjectReference Include="..\..\Presentation\IIoT.Edge.Presentation.Navigation\IIoT.Edge.Presentation.Navigation.csproj" />
+    <ProjectReference Include="..\..\Presentation\IIoT.Edge.Presentation.Panels\IIoT.Edge.Presentation.Panels.csproj" />
   </ItemGroup>
 
   <ItemGroup>

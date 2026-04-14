@@ -1,12 +1,12 @@
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.Model;
+﻿using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Common.Models;
 using System.Collections.ObjectModel;
 using System.Windows;
 
 namespace IIoT.Edge.TestSimulator.Fakes;
 
 /// <summary>
-/// 替换真实日志服务，同时把日志转发到 ViewModel 界面显示
+/// 模拟日志服务：将日志转发到 ViewModel，用于界面显示。
 /// </summary>
 public sealed class FakeLogService : ILogService
 {
@@ -38,3 +38,4 @@ public sealed class FakeLogService : ILogService
     public void Error(string message) => Add("ERROR", message);
     public void Fatal(string message) => Add("FATAL", message);
 }
+

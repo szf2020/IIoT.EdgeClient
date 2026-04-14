@@ -1,4 +1,4 @@
-﻿using IIoT.Edge.Common.Specification;
+﻿using IIoT.Edge.SharedKernel.Specification;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 
 namespace IIoT.Edge.Domain.Hardware.Specifications;

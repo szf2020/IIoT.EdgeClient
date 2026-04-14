@@ -1,4 +1,4 @@
-﻿using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.Application.Abstractions.Device;
 using System.Text.Json;
 
 namespace IIoT.Edge.TestSimulator.Fakes;

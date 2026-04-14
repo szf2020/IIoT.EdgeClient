@@ -1,7 +1,7 @@
-﻿using IIoT.Edge.Common.DataPipeline;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Consumers;
-using IIoT.Edge.Contracts.Device;
+﻿using IIoT.Edge.SharedKernel.DataPipeline;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
+using IIoT.Edge.Application.Abstractions.Device;
 
 namespace IIoT.Edge.TestSimulator.Consumers;
 
@@ -66,3 +66,4 @@ public sealed class SimCloudConsumer : ICloudConsumer, ICloudBatchConsumer
         return success;
     }
 }
+

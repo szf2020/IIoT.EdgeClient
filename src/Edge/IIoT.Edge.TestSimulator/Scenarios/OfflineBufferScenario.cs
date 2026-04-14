@@ -1,10 +1,10 @@
-using IIoT.Edge.Common.DataPipeline;
-using IIoT.Edge.Common.DataPipeline.CellData;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.SharedKernel.DataPipeline;
+using IIoT.Edge.SharedKernel.DataPipeline.CellData;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.TestSimulator.Fakes;
-using IIoT.Edge.Tasks.DataPipeline.Services;
+using IIoT.Edge.Runtime.DataPipeline.Services;
 
 namespace IIoT.Edge.TestSimulator.Scenarios;
 
@@ -48,19 +48,19 @@ public sealed class OfflineBufferScenario : ITestScenario
 
         try
         {
-            // ── 前置 ───────────────────────────────────────────
+            // 前置
             _deviceService.CurrentState = NetworkState.Offline;
             _httpClient.IsOnline        = false;
             _httpClient.Reset();
 
-            // ── 执行 ───────────────────────────────────────────
+            // 执行
             for (int i = 1; i <= 5; i++)
                 _pipeline.Enqueue(BuildRecord($"OFFLINE-{i:D3}"));
 
             await WaitQueueEmptyAsync(ct);
             await Task.Delay(300, ct); // 等待所有 Store 写入落盘
 
-            // ── 断言 ───────────────────────────────────────────
+            // 断言
             var failedCount = await _failedStore.GetCountAsync("Cloud");
             var bufferCount = await _bufferStore.GetCountAsync();
             var callCount   = _httpClient.CallCount;
@@ -83,7 +83,7 @@ public sealed class OfflineBufferScenario : ITestScenario
         };
     }
 
-    // ── 辅助方法 ────────────────────────────────────────────────
+    // 辅助方法
 
     private async Task WaitQueueEmptyAsync(CancellationToken ct)
     {
@@ -111,3 +111,4 @@ public sealed class OfflineBufferScenario : ITestScenario
     private static AssertionResult Assert(string desc, bool passed, string expected, string actual)
         => new() { Description = desc, Passed = passed, Expected = expected, Actual = actual };
 }
+

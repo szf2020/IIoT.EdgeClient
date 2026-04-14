@@ -10,7 +10,7 @@ public sealed class AssertionResult
 
     public override string ToString()
     {
-        var icon = Passed ? "✓" : "✗";
+        var icon = Passed ? "通过" : "失败";
         var detail = Passed ? string.Empty : $"  （期望: {Expected}，实际: {Actual}）";
         return $"{icon} {Description}{detail}";
     }

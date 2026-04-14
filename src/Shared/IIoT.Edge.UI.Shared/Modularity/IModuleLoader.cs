@@ -1,8 +1,1 @@
-﻿// 路径：src/Shared/IIoT.Edge.UI.Shared/Modularity/IModuleLoader.cs
-namespace IIoT.Edge.UI.Shared.Modularity
-{
-    public interface IModuleLoader
-    {
-        void LoadFromDirectory(string directory, string? machineModule = null);
-    }
-}
+// 已在 Phase 6 退役：动态模块加载已迁移为静态注册方案。

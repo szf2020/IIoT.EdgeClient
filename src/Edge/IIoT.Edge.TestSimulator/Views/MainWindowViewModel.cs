@@ -1,15 +1,15 @@
-using IIoT.Edge.Common.Mvvm;
-using IIoT.Edge.Contracts.Model;
 using IIoT.Edge.TestSimulator.Fakes;
 using IIoT.Edge.TestSimulator.Scenarios;
 using IIoT.Edge.TestSimulator.Services;
+using IIoT.Edge.UI.Shared.Mvvm;
+using IIoT.Edge.UI.Shared.Modularity;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 
 namespace IIoT.Edge.TestSimulator.Views;
 
-/// <summary>场景选择项视图模型（复选框）</summary>
+/// <summary>场景选择项视图模型</summary>
 public sealed class ScenarioSelectionViewModel : BaseNotifyPropertyChanged
 {
     private bool _isSelected;
@@ -29,11 +29,11 @@ public sealed class ScenarioSelectionViewModel : BaseNotifyPropertyChanged
     }
 }
 
-/// <summary>场景结果的视图模型（每张结果卡片）</summary>
+/// <summary>场景结果卡片视图模型</summary>
 public sealed class ScenarioCardViewModel : BaseNotifyPropertyChanged
 {
     private bool _passed;
-    private string _statusIcon = "⏳";
+    private string _statusIcon = "待执行";
     private string _statusColor = "#888888";
 
     public string Name { get; }
@@ -45,7 +45,7 @@ public sealed class ScenarioCardViewModel : BaseNotifyPropertyChanged
         set
         {
             _passed = value;
-            StatusIcon = value ? "✅" : "❌";
+            StatusIcon = value ? "通过" : "失败";
             StatusColor = value ? "#2E7D32" : "#C62828";
             OnPropertyChanged();
         }
@@ -71,19 +71,19 @@ public sealed class ScenarioCardViewModel : BaseNotifyPropertyChanged
         foreach (var a in result.Assertions)
             AssertionLines.Add(a.ToString());
         if (result.Error != null)
-            AssertionLines.Add($"⚠ {result.Error}");
+            AssertionLines.Add($"错误：{result.Error}");
         Passed = result.Passed;
     }
 
     public void Reset()
     {
         AssertionLines.Clear();
-        StatusIcon = "⏳";
+        StatusIcon = "待执行";
         StatusColor = "#888888";
     }
 }
 
-/// <summary>主窗口 ViewModel</summary>
+/// <summary>模拟器主窗口视图模型</summary>
 public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
 {
     private readonly ScenarioRunner _runner;
@@ -113,24 +113,24 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
         set { _resetBeforeRun = value; OnPropertyChanged(); }
     }
 
-    // 历史数据场景名称常量
-    private const string HistoricalScenarioName = "历史数据生成（2026-01 至 2026-04-02）";
+    // 历史数据场景名称
+    private const string HistoricalScenarioName = "历史数据生成：2026-01-26 到 2026-04-02";
 
     public MainWindowViewModel(ScenarioRunner runner, FakeLogService logService)
     {
         _runner = runner;
         _logService = logService;
 
-        // ── 场景卡片（显示结果用）────────────────────────────────
-        ScenarioCards.Add(new ScenarioCardViewModel("场景一：在线正常上报"));
-        ScenarioCards.Add(new ScenarioCardViewModel("场景二：离线落库"));
-        ScenarioCards.Add(new ScenarioCardViewModel("场景三：恢复补传"));
+        // 初始化场景卡片
+        ScenarioCards.Add(new ScenarioCardViewModel("场景一：在线模式回放"));
+        ScenarioCards.Add(new ScenarioCardViewModel("场景二：硬件故障排查"));
+        ScenarioCards.Add(new ScenarioCardViewModel("场景三：离线模式验证"));
         ScenarioCards.Add(new ScenarioCardViewModel(HistoricalScenarioName));
 
-        // ── 场景勾选列表 ──────────────────────────────────────────
-        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景一：在线正常上报", true));
-        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景二：离线落库", true));
-        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景三：恢复补传", true));
+        // 初始化可选场景
+        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景一：在线模式回放", true));
+        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景二：硬件故障排查", true));
+        ScenarioSelections.Add(new ScenarioSelectionViewModel("场景三：离线模式验证", true));
         ScenarioSelections.Add(new ScenarioSelectionViewModel(HistoricalScenarioName, false));
 
         logService.EntryAdded += OnLogAdded;
@@ -155,7 +155,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
     private Task RunAllAsync()
     {
         foreach (var item in ScenarioSelections)
-            item.IsSelected = item.Name != HistoricalScenarioName; // 运行全部不包含历史数据场景
+            item.IsSelected = item.Name != HistoricalScenarioName;
 
         return RunSelectedAsync();
     }
@@ -163,18 +163,18 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
     private Task RunOfflineOnlyAsync()
     {
         foreach (var item in ScenarioSelections)
-            item.IsSelected = item.Name == "场景二：离线落库";
+            item.IsSelected = item.Name == "场景二：硬件故障排查";
 
         return RunSelectedAsync();
     }
 
-    /// <summary>单独运行历史数据生成，不清库，不影响其他场景</summary>
+    /// <summary>运行历史数据场景，不影响其他场景</summary>
     private async Task RunHistoricalAsync()
     {
         if (IsBusy) return;
 
         var confirm = MessageBox.Show(
-            "将生成 2026-01-01 至 2026-04-02 约55万条电芯记录写入 SQLite。\n\n是否继续？",
+            "确认要在 2026-01-01 到 2026-04-02 的历史数据写入 SQLite 吗？",
             "历史数据生成确认",
             MessageBoxButton.YesNo,
             MessageBoxImage.Question);
@@ -192,7 +192,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
             var results = await Task.Run(() =>
                 _runner.RunSelectedAsync(
                     new[] { HistoricalScenarioName },
-                    resetBeforeRun: false)); // 历史数据不清库
+                    resetBeforeRun: false)); // 历史数据场景只运行一次
 
             if (results.Count > 0 && card != null)
                 Application.Current?.Dispatcher.Invoke(() => card.Apply(results[0]));
@@ -214,7 +214,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
 
         if (selectedNames.Count == 0)
         {
-            MessageBox.Show("请至少勾选一个场景", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("请先选择至少一个场景", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 

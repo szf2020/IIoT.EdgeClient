@@ -45,7 +45,6 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!--  顶部导航栏  -->
         <Border
             Grid.Row="0"
             Margin="0,0,0,10"
@@ -63,7 +62,7 @@
                         Margin="0,3,0,0"
                         FontSize="11"
                         Foreground="#BBDEFB"
-                        Text="可勾选场景执行：在线上报 / 离线落库 / 恢复补传 / 历史数据生成" />
+                        Text="可选场景执行：在线上报 / 离线落库 / 恢复补传 / 历史数据生成" />
                 </StackPanel>
 
                 <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
@@ -73,7 +72,7 @@
                             Margin="0,0,8,0"
                             Background="#43A047"
                             Command="{Binding RunAllCommand}"
-                            Content="▶  运行全部"
+                            Content="运行全部"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBool}}"
                             Style="{StaticResource RoundBtn}" />
                         <Button
@@ -81,7 +80,7 @@
                             Margin="0,0,8,0"
                             Background="#2E7D32"
                             Command="{Binding RunSelectedCommand}"
-                            Content="▶  运行选中"
+                            Content="运行选中"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBool}}"
                             Style="{StaticResource RoundBtn}" />
                         <Button
@@ -89,23 +88,22 @@
                             Margin="0,0,8,0"
                             Background="#EF6C00"
                             Command="{Binding RunOfflineOnlyCommand}"
-                            Content="⬇ 仅离线落库"
+                            Content="仅离线落库"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBool}}"
                             Style="{StaticResource RoundBtn}" />
-                        <!--  历史数据生成专属按钮  -->
                         <Button
                             Width="130"
                             Margin="0,0,8,0"
                             Background="#6A1B9A"
                             Command="{Binding RunHistoricalCommand}"
-                            Content="📅 生成历史数据"
+                            Content="历史数据生成"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBool}}"
                             Style="{StaticResource RoundBtn}" />
                         <Button
                             Width="90"
                             Background="#757575"
                             Command="{Binding ResetCommand}"
-                            Content="↺  重置"
+                            Content="重置"
                             IsEnabled="{Binding IsBusy, Converter={StaticResource InvertBool}}"
                             Style="{StaticResource RoundBtn}" />
                     </StackPanel>
@@ -121,7 +119,6 @@
             </Grid>
         </Border>
 
-        <!--  主体：左侧日志 + 右侧场景  -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -129,7 +126,6 @@
                 <ColumnDefinition Width="370" />
             </Grid.ColumnDefinitions>
 
-            <!--  日志输出面板  -->
             <Border
                 Grid.Column="0"
                 Background="White"
@@ -150,7 +146,7 @@
                         <TextBlock
                             FontWeight="SemiBold"
                             Foreground="#37474F"
-                            Text="📋  日志输出" />
+                            Text="日志输出" />
                     </Border>
 
                     <ListBox
@@ -184,14 +180,12 @@
                 </Grid>
             </Border>
 
-            <!--  右侧场景区  -->
             <Grid Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <!--  场景勾选  -->
                 <Border
                     Grid.Row="0"
                     Margin="0,0,0,10"
@@ -205,7 +199,7 @@
                             Margin="0,0,0,8"
                             FontWeight="SemiBold"
                             Foreground="#37474F"
-                            Text="🧪 场景选择" />
+                            Text="场景选择" />
                         <ItemsControl ItemsSource="{Binding ScenarioSelections}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
@@ -220,12 +214,11 @@
                             Margin="0,8,0,0"
                             FontSize="11"
                             Foreground="#9E9E9E"
-                            Text="💡 历史数据生成请点击顶部紫色按钮单独运行"
+                            Text="历史数据生成请点击顶部按钮单独运行"
                             TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
 
-                <!--  场景结果卡片  -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding ScenarioCards}">
                         <ItemsControl.ItemTemplate>

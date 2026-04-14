@@ -1,5 +1,5 @@
-﻿using IIoT.Edge.Common.Domain;
-using IIoT.Edge.Common.Enums;
+﻿using IIoT.Edge.SharedKernel.Domain;
+using IIoT.Edge.SharedKernel.Enums;
 
 namespace IIoT.Edge.Domain.Hardware.Aggregates;
 

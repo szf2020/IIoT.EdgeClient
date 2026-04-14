@@ -1,4 +1,4 @@
-using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.Application.Abstractions.Device;
 
 namespace IIoT.Edge.TestSimulator.Fakes;
 

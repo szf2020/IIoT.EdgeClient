@@ -3,15 +3,14 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:avalon="https://github.com/Dirkster99/AvalonDock"
-    xmlns:equipment="clr-namespace:IIoT.Edge.Module.Production.Equipment;assembly=IIoT.Edge.Module.Production"
-    xmlns:footerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.Footer;assembly=IIoT.Edge.UI.Shared"
-    xmlns:headerVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SystemHeader;assembly=IIoT.Edge.UI.Shared"
-    xmlns:loginVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.Login;assembly=IIoT.Edge.UI.Shared"
+    xmlns:equipment="clr-namespace:IIoT.Edge.Presentation.Panels.Features.Equipment;assembly=IIoT.Edge.Presentation.Panels"
+    xmlns:footerVM="clr-namespace:IIoT.Edge.Presentation.Shell.Features.Footer;assembly=IIoT.Edge.Presentation.Shell"
+    xmlns:headerVM="clr-namespace:IIoT.Edge.Presentation.Shell.Features.Header;assembly=IIoT.Edge.Presentation.Shell"
+    xmlns:loginVM="clr-namespace:IIoT.Edge.Presentation.Shell.Features.Login;assembly=IIoT.Edge.Presentation.Shell"
     xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-    xmlns:monitor="clr-namespace:IIoT.Edge.Module.Production.Monitor;assembly=IIoT.Edge.Module.Production"
-    xmlns:sysLog="clr-namespace:IIoT.Edge.Module.SysLog;assembly=IIoT.Edge.Module.SysLog"
-    xmlns:sysMenuVM="clr-namespace:IIoT.Edge.UI.Shared.Widgets.SysMenu;assembly=IIoT.Edge.UI.Shared"
-    Title="IIoT Edge Client"
+    xmlns:sysLog="clr-namespace:IIoT.Edge.Presentation.Panels.Features.SysLog;assembly=IIoT.Edge.Presentation.Panels"
+    xmlns:sysMenuVM="clr-namespace:IIoT.Edge.Presentation.Shell.Features.SysMenu;assembly=IIoT.Edge.Presentation.Shell"
+    Title="IIoT 边缘客户端"
     Width="1280"
     Height="768"
     MinWidth="900"
@@ -140,3 +139,4 @@
         </materialDesign:DialogHost>
     </Border>
 </Window>
+

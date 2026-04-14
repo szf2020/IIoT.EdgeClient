@@ -1,4 +1,4 @@
-﻿using IIoT.Edge.Common.Domain;
+﻿using IIoT.Edge.SharedKernel.Domain;
 using IIoT.Edge.Domain.Hardware.Aggregates;
 
 namespace IIoT.Edge.Domain.Config.Aggregates;

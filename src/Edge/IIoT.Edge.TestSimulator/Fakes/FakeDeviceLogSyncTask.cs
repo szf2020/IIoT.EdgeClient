@@ -1,4 +1,4 @@
-using IIoT.Edge.Contracts.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
 
 namespace IIoT.Edge.TestSimulator.Fakes;
 

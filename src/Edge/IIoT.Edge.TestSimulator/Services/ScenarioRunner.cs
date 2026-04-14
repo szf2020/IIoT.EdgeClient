@@ -1,4 +1,4 @@
-using IIoT.Edge.Contracts;
+using IIoT.Edge.Application.Abstractions.Logging;
 using IIoT.Edge.TestSimulator.Fakes;
 using IIoT.Edge.TestSimulator.Scenarios;
 
@@ -78,9 +78,9 @@ public sealed class ScenarioRunner
             return results;
         }
 
-        _logger.Info("══════════════════════════════════════════════");
+        _logger.Info("----------------------------------------");
         _logger.Info("    IIoT Edge 集成测试模拟器  开始运行");
-        _logger.Info("══════════════════════════════════════════════");
+        _logger.Info("----------------------------------------");
 
         // 历史数据场景不需要清库（它直接上传云端，不依赖本地状态）
         var needReset = resetBeforeRun
@@ -97,7 +97,7 @@ public sealed class ScenarioRunner
         {
             var scenario = scenarios[i];
             _logger.Info($"");
-            _logger.Info($"── 场景 {i + 1} / {scenarios.Count}: {scenario.Name} ──────────────");
+            _logger.Info($"场景 {i + 1} / {scenarios.Count}: {scenario.Name}");
 
             ScenarioResult result;
             try
@@ -123,14 +123,14 @@ public sealed class ScenarioRunner
             if (result.Error != null)
                 _logger.Error($"  异常: {result.Error}");
 
-            _logger.Info($"  → {(result.Passed ? "✓ 通过" : "✗ 失败")}");
+            _logger.Info($"  {(result.Passed ? "通过" : "失败")}");
         }
 
         var passCount = results.Count(r => r.Passed);
         _logger.Info("");
-        _logger.Info("══════════════════════════════════════════════");
+        _logger.Info("----------------------------------------");
         _logger.Info($"    总结: {passCount} / {results.Count} 通过");
-        _logger.Info("══════════════════════════════════════════════");
+        _logger.Info("----------------------------------------");
 
         return results;
     }
@@ -141,7 +141,7 @@ public sealed class ScenarioRunner
         await _dataHelper.ClearAllAsync();
         _httpClient.Reset();
         _capacityStore.ResetAll();
-        _deviceService.CurrentState = IIoT.Edge.Contracts.Device.NetworkState.Offline;
+        _deviceService.CurrentState = IIoT.Edge.Application.Abstractions.Device.NetworkState.Offline;
         _logger.Info("[重置] 所有测试数据已清空，状态已恢复初始值");
     }
 }

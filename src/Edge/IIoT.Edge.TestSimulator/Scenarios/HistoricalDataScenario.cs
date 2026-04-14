@@ -1,7 +1,7 @@
-﻿using IIoT.Edge.Common.DataPipeline.Capacity;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.Device;
+﻿using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.Device;
 
 namespace IIoT.Edge.TestSimulator.Scenarios;
 
@@ -104,7 +104,7 @@ public class HistoricalDataScenario : ITestScenario
         return result;
     }
 
-    /// <summary>生成单天单台 PLC 的电芯记录，追加到 batch</summary>
+    /// <summary>生成单日单台 PLC 的电芯记录并追加到批处理列表。</summary>
     private void GenerateDayRecords(DateTime naturalDay, List<CapacityRecord> batch, string plcName)
 
     {

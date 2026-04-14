@@ -1,9 +1,9 @@
-using IIoT.Edge.Common.DataPipeline;
-using IIoT.Edge.Common.DataPipeline.Capacity;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Consumers;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.Device;
+﻿using IIoT.Edge.SharedKernel.DataPipeline;
+using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.TestSimulator.Fakes;
 
 namespace IIoT.Edge.TestSimulator.Consumers;

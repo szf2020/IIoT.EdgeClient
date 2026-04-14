@@ -1,5 +1,5 @@
-using IIoT.Edge.Infrastructure;
-using IIoT.Edge.Infrastructure.Dapper;
+﻿using IIoT.Edge.Infrastructure.Persistence.Dapper;
+using IIoT.Edge.Infrastructure.Persistence.EfCore;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.UI.Shared.Modularity;
 using Microsoft.Extensions.Configuration;
@@ -30,17 +30,13 @@ public partial class App : Application
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
-        // ── 唯一性校验 ─────────────────────────────────
         if (!TryAcquireInstanceLock(configuration))
         {
             Shutdown();
             return;
         }
 
-        // ── DI 构建 ────────────────────────────────────
         _sp = ConfigureServices(configuration).BuildServiceProvider();
-
-        // ── 基础设施初始化 ─────────────────────────────
         _sp.ApplyMigrations();
 
         try
@@ -50,15 +46,14 @@ public partial class App : Application
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"数据库初始化失败，程序无法启动。\n\n{ex.Message}",
-                "IIoT 客户端 - 启动错误",
+                $"Database initialization failed.\n\n{ex.Message}",
+                "IIoT Edge Client - Startup Error",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
             Shutdown();
             return;
         }
 
-        // ── 生命周期管理 ──────────────────────────────
         var lifecycle = _sp.GetRequiredService<AppLifecycleManager>();
         lifecycle.Initialize();
 
@@ -80,24 +75,23 @@ public partial class App : Application
 
         ReleaseMutex();
         base.OnExit(e);
-
-        // 强制杀进程，确保后台线程全部退出
         Environment.Exit(0);
     }
-
-    // ── 私有方法 ──────────────────────────────────────
 
     private bool TryAcquireInstanceLock(IConfiguration configuration)
     {
         var instanceId = configuration["InstanceId"] ?? "IIoT-Edge-Default";
         var mutexName = $"Global\\IIoT.EdgeClient_{instanceId}";
 
-        _instanceMutex = new Mutex(true, mutexName, out bool createdNew);
-        if (createdNew) return true;
+        _instanceMutex = new Mutex(true, mutexName, out var createdNew);
+        if (createdNew)
+        {
+            return true;
+        }
 
         MessageBox.Show(
-            $"实例 [{instanceId}] 已在运行中，不能重复启动。",
-            "IIoT 客户端",
+            $"Instance [{instanceId}] is already running.",
+            "IIoT Edge Client",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
 
@@ -107,7 +101,11 @@ public partial class App : Application
 
     private void ReleaseMutex()
     {
-        if (_instanceMutex is null) return;
+        if (_instanceMutex is null)
+        {
+            return;
+        }
+
         _instanceMutex.ReleaseMutex();
         _instanceMutex.Dispose();
         _instanceMutex = null;
@@ -117,22 +115,14 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
         var viewRegistry = new ViewRegistry();
-
-        var machineModule = configuration["MachineModule"];
-        IModuleLoader loader = new ModuleLoader(services, viewRegistry);
-        loader.LoadFromDirectory(
-            AppDomain.CurrentDomain.BaseDirectory, machineModule);
-
         var dbDir = GetDbDirectory();
         services.AddShell(viewRegistry, configuration, dbDir);
-
         return services;
     }
 
     private static string GetDbDirectory()
     {
-        var dbDir = Path.Combine(
-            AppDomain.CurrentDomain.BaseDirectory, "data", "db");
+        var dbDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "db");
         Directory.CreateDirectory(dbDir);
         return dbDir;
     }

@@ -1,7 +1,7 @@
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.DataPipeline.SyncTask;
-using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.Device;
 
 namespace IIoT.Edge.TestSimulator.Fakes;
 

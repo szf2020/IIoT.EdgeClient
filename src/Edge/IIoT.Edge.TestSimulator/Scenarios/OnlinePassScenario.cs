@@ -1,10 +1,10 @@
-using IIoT.Edge.Common.DataPipeline;
-using IIoT.Edge.Common.DataPipeline.CellData;
-using IIoT.Edge.Contracts;
-using IIoT.Edge.Contracts.DataPipeline.Stores;
-using IIoT.Edge.Contracts.Device;
+using IIoT.Edge.SharedKernel.DataPipeline;
+using IIoT.Edge.SharedKernel.DataPipeline.CellData;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.TestSimulator.Fakes;
-using IIoT.Edge.Tasks.DataPipeline.Services;
+using IIoT.Edge.Runtime.DataPipeline.Services;
 
 namespace IIoT.Edge.TestSimulator.Scenarios;
 
@@ -51,20 +51,20 @@ public sealed class OnlinePassScenario : ITestScenario
 
         try
         {
-            // ── 前置 ───────────────────────────────────────────
+            // 前置
             _deviceService.CurrentState = NetworkState.Online;
             _httpClient.IsOnline        = true;
             _httpClient.Reset();
             _capacityStore.ResetAll();
 
-            // ── 执行 ───────────────────────────────────────────
+            // 执行
             for (int i = 1; i <= 3; i++)
                 _pipeline.Enqueue(BuildRecord($"TEST-{i:D3}"));
 
             await WaitQueueEmptyAsync(ct);
             await Task.Delay(200, ct); // 等待异步 Store 写入完成
 
-            // ── 断言 ───────────────────────────────────────────
+            // 断言
             var callCount     = _httpClient.CallCount;
             var failedCount   = await _failedStore.GetCountAsync("Cloud");
             var bufferCount   = await _bufferStore.GetCountAsync();
@@ -95,7 +95,7 @@ public sealed class OnlinePassScenario : ITestScenario
         };
     }
 
-    // ── 辅助方法 ────────────────────────────────────────────────
+    // 辅助方法
 
     private async Task WaitQueueEmptyAsync(CancellationToken ct)
     {
@@ -123,3 +123,4 @@ public sealed class OnlinePassScenario : ITestScenario
     private static AssertionResult Assert(string desc, bool passed, string expected, string actual)
         => new() { Description = desc, Passed = passed, Expected = expected, Actual = actual };
 }
+

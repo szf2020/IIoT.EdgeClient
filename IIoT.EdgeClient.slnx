@@ -1,34 +1,34 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/Application/">
+    <Project Path="src/Application/IIoT.Edge.Application/IIoT.Edge.Application.csproj" />
+  </Folder>
   <Folder Name="/src/Core/">
     <Project Path="src/Core/IIoT.Edge.Domain/IIoT.Edge.Domain.csproj" Id="bf1c5c1a-aed5-4685-bbce-2db4d59f6282" />
   </Folder>
   <Folder Name="/src/Edge/">
     <Project Path="src/Edge/IIoT.Edge.Shell/IIoT.Edge.Shell.csproj" Id="18446b65-38e5-4acb-a229-ba0f9d8a83cf" />
-      <Project Path="src/Edge/IIoT.Edge.TestSimulator/IIoT.Edge.TestSimulator.csproj" />$n  </Folder>
-  <Folder Name="/src/Infrastructure/">
-    <Project Path="src/Infrastructure/IIoT.Edge.CloudSync/IIoT.Edge.CloudSync.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
-    <Project Path="src/Infrastructure/IIoT.Edge.DataMapping/IIoT.Edge.DataMapping.csproj" Id="26244124-df47-4905-9d4d-5e75a1d691f5" />
-    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Dapper/IIoT.Edge.Infrastructure.Dapper.csproj" Id="f888b62f-8635-42cf-b2b4-fb605267ba78" />
-    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Excel/IIoT.Edge.Infrastructure.Excel.csproj" Id="6365f64f-3b5d-481f-99c3-6f41b1d611ef" />
-    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure/IIoT.Edge.Infrastructure.csproj" Id="3fbdae2b-de52-43d5-ac49-4271b8819af2" />
-    <Project Path="src/Infrastructure/IIoT.Edge.PlcDevice/IIoT.Edge.PlcDevice.csproj" Id="78ef5b00-1ea0-475d-9e2f-8318f8ea0819" />
+    <Project Path="src/Edge/IIoT.Edge.TestSimulator/IIoT.Edge.TestSimulator.csproj" />
   </Folder>
-  <Folder Name="/src/Modules/">
-    <Project Path="src/Modules/IIoT.Edge.Module.Config/IIoT.Edge.Module.Config.csproj" Id="55b910b1-cad6-442d-9b10-9033e19c7748" />
-    <Project Path="src/Modules/IIoT.Edge.Module.Formula/IIoT.Edge.Module.Formula.csproj" Id="b6e48e8b-fa3d-4916-afe1-8f88215099b7" />
-    <Project Path="src/Modules/IIoT.Edge.Module.Hardware/IIoT.Edge.Module.Hardware.csproj" Id="7c1ae4b7-1c61-45db-9489-1a183c5ad6da" />
-    <Project Path="src/Modules/IIoT.Edge.Module.Production/IIoT.Edge.Module.Production.csproj" Id="1e6a51d1-2799-4e5f-854a-5e741351b276" />
-    <Project Path="src/Modules/IIoT.Edge.Module.SysLog/IIoT.Edge.Module.SysLog.csproj" Id="b2b8d324-a68a-44d1-92fa-f4400617444b" />
+  <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Integration/IIoT.Edge.Infrastructure.Integration.csproj" Id="23525f6e-79c9-4ad1-992b-f1ad8ddfa65b" />
+    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Persistence.Dapper/IIoT.Edge.Infrastructure.Persistence.Dapper.csproj" Id="f888b62f-8635-42cf-b2b4-fb605267ba78" />
+    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.Persistence.EfCore/IIoT.Edge.Infrastructure.Persistence.EfCore.csproj" Id="3fbdae2b-de52-43d5-ac49-4271b8819af2" />
+    <Project Path="src/Infrastructure/IIoT.Edge.Infrastructure.DeviceComm/IIoT.Edge.Infrastructure.DeviceComm.csproj" Id="78ef5b00-1ea0-475d-9e2f-8318f8ea0819" />
+  </Folder>
+  <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/IIoT.Edge.Presentation.Shell/IIoT.Edge.Presentation.Shell.csproj" />
+    <Project Path="src/Presentation/IIoT.Edge.Presentation.Navigation/IIoT.Edge.Presentation.Navigation.csproj" />
+    <Project Path="src/Presentation/IIoT.Edge.Presentation.Panels/IIoT.Edge.Presentation.Panels.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
-    <Project Path="src/Shared/IIoT.Edge.Common/IIoT.Edge.Common.csproj" />
-    <Project Path="src/Shared/IIoT.Edge.Contracts/IIoT.Edge.Contracts.csproj" Id="000cbd33-c27e-41cc-8f60-e5bc79c7296f" />
+    <Project Path="src/Shared/IIoT.Edge.SharedKernel/IIoT.Edge.SharedKernel.csproj" />
     <Project Path="src/Shared/IIoT.Edge.UI.Shared/IIoT.Edge.UI.Shared.csproj" Id="2c8e15da-52ba-4d59-aced-196d42918475" />
   </Folder>
-  <Folder Name="/src/Tasks/">
-    <Project Path="src/Tasks/IIoT.Edge.Task.Scan/IIoT.Edge.Tasks.Scan.csproj" Id="1b084c68-6e45-466a-8a98-438cf08eac27" />
-    <Project Path="src/Tasks/IIoT.Edge.Tasks.DataPipeline/IIoT.Edge.Tasks.DataPipeline.csproj" Id="d87f2998-d7cc-4f4b-a518-095f3a84f3d5" />
-    <Project Path="src/Tasks/IIoT.Edge.Tasks/IIoT.Edge.Tasks.csproj" Id="0af2fc95-d944-481f-89e1-897ba043a59d" />
+  <Folder Name="/src/Runtime/">
+    <Project Path="src/Runtime/IIoT.Edge.Runtime.Scan/IIoT.Edge.Runtime.Scan.csproj" Id="1b084c68-6e45-466a-8a98-438cf08eac27" />
+    <Project Path="src/Runtime/IIoT.Edge.Runtime.DataPipeline/IIoT.Edge.Runtime.DataPipeline.csproj" Id="d87f2998-d7cc-4f4b-a518-095f3a84f3d5" />
+    <Project Path="src/Runtime/IIoT.Edge.Runtime/IIoT.Edge.Runtime.csproj" Id="0af2fc95-d944-481f-89e1-897ba043a59d" />
   </Folder>
 </Solution>
+
