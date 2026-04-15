@@ -18,8 +18,11 @@ public class CapacitySyncTask : ICapacitySyncTask
     private readonly ICapacityBufferStore _bufferStore;
     private readonly ILogService _logger;
     private readonly ShiftConfig _shiftConfig;
+    private readonly object _lifecycleLock = new();
+    private readonly SemaphoreSlim _syncGate = new(1, 1);
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
+    private bool _isRunning;
     private static readonly TimeSpan SyncInterval = TimeSpan.FromSeconds(60);
 
     public CapacitySyncTask(ICloudHttpClient cloudHttp, ICloudApiEndpointProvider endpointProvider, IDeviceService deviceService, IProductionContextStore contextStore, ICapacityBufferStore bufferStore, ILogService logger, ShiftConfig shiftConfig)
@@ -35,23 +38,55 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     public Task StartAsync(CancellationToken ct)
     {
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _loopTask = Task.Run(() => SyncLoopAsync(_cts.Token), _cts.Token);
+        lock (_lifecycleLock)
+        {
+            if (_isRunning)
+            {
+                return Task.CompletedTask;
+            }
+
+            _isRunning = true;
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _loopTask = Task.Run(() => SyncLoopAsync(_cts.Token), CancellationToken.None);
+        }
+
         _logger.Info("[CapacitySync] Started. Interval: 60s");
         return Task.CompletedTask;
     }
 
     public async Task StopAsync()
     {
-        if (_cts is not null)
+        CancellationTokenSource? localCts;
+        Task? localLoopTask;
+
+        lock (_lifecycleLock)
         {
-            await _cts.CancelAsync();
-            if (_loopTask is not null)
+            if (!_isRunning)
             {
-                try { await _loopTask; } catch (OperationCanceledException) { }
+                return;
             }
-            _cts.Dispose();
+
+            _isRunning = false;
+            localCts = _cts;
+            localLoopTask = _loopTask;
             _cts = null;
+            _loopTask = null;
+        }
+
+        if (localCts is not null)
+        {
+            await localCts.CancelAsync();
+            if (localLoopTask is not null)
+            {
+                try
+                {
+                    await localLoopTask;
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            }
+            localCts.Dispose();
         }
     }
 
@@ -68,12 +103,33 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     private async Task ExecuteOnceAsync()
     {
-        if (_deviceService.CurrentState == NetworkState.Offline) return;
-        var device = _deviceService.CurrentDevice;
-        if (device is null) return;
+        await _syncGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (_deviceService.CurrentState == NetworkState.Offline)
+            {
+                return;
+            }
 
-        try { await SyncAllDevicesAsync(device.DeviceId); }
-        catch (Exception ex) { _logger.Error($"[CapacitySync] Sync failed: {ex.Message}"); }
+            var device = _deviceService.CurrentDevice;
+            if (device is null)
+            {
+                return;
+            }
+
+            try
+            {
+                await SyncAllDevicesAsync(device.DeviceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"[CapacitySync] Sync failed: {ex.Message}");
+            }
+        }
+        finally
+        {
+            _syncGate.Release();
+        }
     }
 
     private async Task SyncAllDevicesAsync(Guid cloudDeviceId)
@@ -119,41 +175,54 @@ public class CapacitySyncTask : ICapacitySyncTask
 
     public async Task<bool> RetryBufferAsync()
     {
-        var summaries = await _bufferStore.GetHourlySummaryAsync().ConfigureAwait(false);
-        if (summaries.Count == 0) return true;
-
-        var device = _deviceService.CurrentDevice;
-        if (device is null) return false;
-
-        foreach (var summary in summaries)
+        await _syncGate.WaitAsync().ConfigureAwait(false);
+        try
         {
-            var endMinute = summary.MinuteBucket == 30 ? 0 : 30;
-            var endHour = summary.MinuteBucket == 30 ? (summary.Hour + 1) % 24 : summary.Hour;
-            var payload = new
+            if (_deviceService.CurrentState == NetworkState.Offline)
             {
-                deviceId = device.DeviceId,
-                date = summary.Date,
-                hour = summary.Hour,
-                minute = summary.MinuteBucket,
-                timeLabel = $"{summary.Hour:D2}:{summary.MinuteBucket:D2}-{endHour:D2}:{endMinute:D2}",
-                shiftCode = summary.ShiftCode,
-                totalCount = summary.Total,
-                okCount = summary.OkCount,
-                ngCount = summary.NgCount,
-                plcName = summary.PlcName
-            };
-
-            var success = await _cloudHttp.PostAsync(_endpointProvider.GetCapacityHourlyPath(), payload);
-            if (!success)
-            {
-                _logger.Warn($"[Retry-Cloud] Capacity retry failed: {summary.Date} {summary.Hour:D2}:{summary.MinuteBucket:D2}/{summary.ShiftCode}");
                 return false;
             }
-        }
 
-        await _bufferStore.ClearAllAsync().ConfigureAwait(false);
-        _logger.Info($"[Retry-Cloud] Capacity retry completed. Cleared {summaries.Count} summary row(s).");
-        return true;
+            var summaries = await _bufferStore.GetHourlySummaryAsync().ConfigureAwait(false);
+            if (summaries.Count == 0) return true;
+
+            var device = _deviceService.CurrentDevice;
+            if (device is null) return false;
+
+            foreach (var summary in summaries)
+            {
+                var endMinute = summary.MinuteBucket == 30 ? 0 : 30;
+                var endHour = summary.MinuteBucket == 30 ? (summary.Hour + 1) % 24 : summary.Hour;
+                var payload = new
+                {
+                    deviceId = device.DeviceId,
+                    date = summary.Date,
+                    hour = summary.Hour,
+                    minute = summary.MinuteBucket,
+                    timeLabel = $"{summary.Hour:D2}:{summary.MinuteBucket:D2}-{endHour:D2}:{endMinute:D2}",
+                    shiftCode = summary.ShiftCode,
+                    totalCount = summary.Total,
+                    okCount = summary.OkCount,
+                    ngCount = summary.NgCount,
+                    plcName = summary.PlcName
+                };
+
+                var success = await _cloudHttp.PostAsync(_endpointProvider.GetCapacityHourlyPath(), payload);
+                if (!success)
+                {
+                    _logger.Warn($"[Retry-Cloud] Capacity retry failed: {summary.Date} {summary.Hour:D2}:{summary.MinuteBucket:D2}/{summary.ShiftCode}");
+                    return false;
+                }
+            }
+
+            await _bufferStore.ClearAllAsync().ConfigureAwait(false);
+            _logger.Info($"[Retry-Cloud] Capacity retry completed. Cleared {summaries.Count} summary row(s).");
+            return true;
+        }
+        finally
+        {
+            _syncGate.Release();
+        }
     }
 
     private string GetShiftCodeByTime(int hour, int minute)

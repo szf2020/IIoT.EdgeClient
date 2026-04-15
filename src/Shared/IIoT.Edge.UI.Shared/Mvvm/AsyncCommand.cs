@@ -2,9 +2,6 @@ using System.Windows.Input;
 
 namespace IIoT.Edge.UI.Shared.Mvvm
 {
-    /// <summary>
-    /// 带参数的异步命令实现。
-    /// </summary>
     public class AsyncCommand<T> : ICommand
     {
         private readonly Func<T, Task> _execute;
@@ -22,29 +19,44 @@ namespace IIoT.Edge.UI.Shared.Mvvm
         public bool CanExecute(object? parameter)
         {
             if (_isExecuting)
+            {
                 return false;
+            }
 
             if (parameter is null)
+            {
                 return _canExecute?.Invoke(default!) ?? true;
+            }
 
             return _canExecute?.Invoke((T)parameter) ?? true;
         }
 
-        public async void Execute(object? parameter)
+        public void Execute(object? parameter)
         {
-            if (CanExecute(parameter))
+            _ = ExecuteAsync(parameter);
+        }
+
+        private async Task ExecuteAsync(object? parameter)
+        {
+            if (!CanExecute(parameter))
             {
-                try
-                {
-                    _isExecuting = true;
-                    RaiseCanExecuteChanged();
-                    await _execute(parameter is null ? default! : (T)parameter);
-                }
-                finally
-                {
-                    _isExecuting = false;
-                    RaiseCanExecuteChanged();
-                }
+                return;
+            }
+
+            try
+            {
+                _isExecuting = true;
+                RaiseCanExecuteChanged();
+                await _execute(parameter is null ? default! : (T)parameter);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+            finally
+            {
+                _isExecuting = false;
+                RaiseCanExecuteChanged();
             }
         }
 
@@ -54,9 +66,6 @@ namespace IIoT.Edge.UI.Shared.Mvvm
         }
     }
 
-    /// <summary>
-    /// 无参数的异步命令实现。
-    /// </summary>
     public class AsyncCommand : ICommand
     {
         private readonly Func<Task> _execute;
@@ -76,21 +85,32 @@ namespace IIoT.Edge.UI.Shared.Mvvm
             return !_isExecuting && (_canExecute?.Invoke() ?? true);
         }
 
-        public async void Execute(object? parameter)
+        public void Execute(object? parameter)
         {
-            if (CanExecute(parameter))
+            _ = ExecuteAsync();
+        }
+
+        private async Task ExecuteAsync()
+        {
+            if (!CanExecute(null))
             {
-                try
-                {
-                    _isExecuting = true;
-                    RaiseCanExecuteChanged();
-                    await _execute();
-                }
-                finally
-                {
-                    _isExecuting = false;
-                    RaiseCanExecuteChanged();
-                }
+                return;
+            }
+
+            try
+            {
+                _isExecuting = true;
+                RaiseCanExecuteChanged();
+                await _execute();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(ex);
+            }
+            finally
+            {
+                _isExecuting = false;
+                RaiseCanExecuteChanged();
             }
         }
 

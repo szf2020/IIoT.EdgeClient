@@ -112,7 +112,7 @@ public class CapacityViewModel : PresentationViewModelBase
     private void RefreshDeviceList()
     {
         var names = _capacityViewService.GetDeviceNames();
-        ReplaceItems(DeviceNames, names);
+        ReplaceItems<string>(DeviceNames, names);
 
         if (!string.IsNullOrEmpty(_selectedDeviceName) && names.Contains(_selectedDeviceName))
         {
@@ -127,7 +127,7 @@ public class CapacityViewModel : PresentationViewModelBase
     {
         if (!CanQueryCloud)
         {
-            ReplaceItems(DailyRecords, Array.Empty<DailyCapacityVm>());
+            ReplaceItems<DailyCapacityVm>(DailyRecords, Array.Empty<DailyCapacityVm>());
             ClearSummary();
             RefreshChart();
             return;
@@ -162,7 +162,7 @@ public class CapacityViewModel : PresentationViewModelBase
 
     private void ApplyResult(CapacityViewResult result)
     {
-        ReplaceItems(DailyRecords, result.Rows);
+        ReplaceItems<DailyCapacityVm>(DailyRecords, result.Rows);
         PeriodTotal = result.PeriodTotal;
         PeriodOk = result.PeriodOk;
         PeriodNg = result.PeriodNg;

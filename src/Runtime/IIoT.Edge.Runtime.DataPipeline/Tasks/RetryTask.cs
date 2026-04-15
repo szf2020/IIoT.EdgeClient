@@ -20,6 +20,7 @@ public class RetryTask : ScheduledTaskBase
     private readonly ICloudBatchConsumer? _cloudBatchConsumer;
     private readonly IDeviceLogSyncTask? _deviceLogSync;
     private readonly ICapacitySyncTask? _capacitySync;
+    private bool _wasOffline = true;
 
     private const int MaxRetryCount = 20;
 
@@ -53,21 +54,53 @@ public class RetryTask : ScheduledTaskBase
 
     protected override async Task ExecuteAsync()
     {
-        if (_channel == "Cloud" && (_deviceService.CurrentState == NetworkState.Offline || !_deviceService.HasDeviceId))
+        if (_channel == "Cloud")
         {
-            return;
+            var cloudReady = _deviceService.CurrentState == NetworkState.Online && _deviceService.HasDeviceId;
+            if (!cloudReady)
+            {
+                _wasOffline = true;
+                return;
+            }
+
+            if (_wasOffline)
+            {
+                _wasOffline = false;
+                await RecoverAbandonedRecordsAsync();
+            }
         }
 
         await RetryFailedCellRecordsAsync();
 
         if (_channel == "Cloud" && _deviceLogSync is not null)
         {
-            await _deviceLogSync.RetryBufferAsync();
+            var retried = await _deviceLogSync.RetryBufferAsync();
+            if (!retried)
+            {
+                Logger.Warn($"[Retry-{_channel}] Device log buffer retry did not fully succeed.");
+            }
         }
 
         if (_channel == "Cloud" && _capacitySync is not null)
         {
-            await _capacitySync.RetryBufferAsync();
+            var retried = await _capacitySync.RetryBufferAsync();
+            if (!retried)
+            {
+                Logger.Warn($"[Retry-{_channel}] Capacity buffer retry did not fully succeed.");
+            }
+        }
+    }
+
+    private async Task RecoverAbandonedRecordsAsync()
+    {
+        try
+        {
+            await _failedStore.ResetAllAbandonedAsync().ConfigureAwait(false);
+            Logger.Info($"[Retry-{_channel}] Network recovered. Abandoned records were reset for retry.");
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"[Retry-{_channel}] Failed to reset abandoned records: {ex.Message}");
         }
     }
 

@@ -1,6 +1,7 @@
 using IIoT.Edge.TestSimulator.Fakes;
 using IIoT.Edge.TestSimulator.Scenarios;
 using IIoT.Edge.TestSimulator.Services;
+using IIoT.Edge.Application.Common.Models;
 using IIoT.Edge.UI.Shared.Mvvm;
 using IIoT.Edge.UI.Shared.Modularity;
 using System.Collections.ObjectModel;
@@ -145,7 +146,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
     private void OnLogAdded(LogEntry entry)
     {
         var text = $"[{entry.Time:HH:mm:ss}] [{entry.Level,-5}] {entry.Message}";
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
             dispatcher.Invoke(() => LogMessages.Add(text));
         else
@@ -195,7 +196,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
                     resetBeforeRun: false)); // 历史数据场景只运行一次
 
             if (results.Count > 0 && card != null)
-                Application.Current?.Dispatcher.Invoke(() => card.Apply(results[0]));
+                System.Windows.Application.Current?.Dispatcher.Invoke(() => card.Apply(results[0]));
         }
         finally
         {
@@ -233,7 +234,7 @@ public sealed class MainWindowViewModel : BaseNotifyPropertyChanged
             foreach (var result in results)
             {
                 if (!cardMap.TryGetValue(result.Name, out var card)) continue;
-                Application.Current?.Dispatcher.Invoke(() => card.Apply(result));
+                System.Windows.Application.Current?.Dispatcher.Invoke(() => card.Apply(result));
             }
         }
         finally

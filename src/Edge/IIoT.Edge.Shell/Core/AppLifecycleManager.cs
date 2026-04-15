@@ -1,80 +1,69 @@
-﻿using IIoT.Edge.Application.Abstractions.Context;
-using IIoT.Edge.Application.Abstractions.DataPipeline;
-using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
-using IIoT.Edge.Application.Abstractions.Device;
+using IIoT.Edge.Application.Abstractions.Context;
 using IIoT.Edge.Application.Abstractions.Logging;
-using IIoT.Edge.Application.Abstractions.Plc;
 using IIoT.Edge.Application.Abstractions.Recipe;
-using IIoT.Edge.Runtime.DataPipeline;
+using IIoT.Edge.Application.Abstractions.Tasks;
+using IIoT.Edge.Infrastructure.Persistence.Dapper;
+using IIoT.Edge.Infrastructure.Persistence.EfCore;
 
 namespace IIoT.Edge.Shell.Core;
 
-public class AppLifecycleManager
+public class AppLifecycleManager : IAppLifecycleCoordinator
 {
+    private readonly IServiceProvider _serviceProvider;
     private readonly IProductionContextStore _contextStore;
-    private readonly IDeviceService _deviceService;
-    private readonly ICapacitySyncTask _capacitySync;
-    private readonly IDeviceLogSyncTask _deviceLogSync;
     private readonly IRecipeService _recipeService;
-    private readonly IPlcConnectionManager _plcManager;
+    private readonly IBackgroundServiceCoordinator _backgroundServices;
     private readonly ILogService _logger;
-    private readonly List<Task> _backgroundTasks = new();
 
     public AppLifecycleManager(
+        IServiceProvider serviceProvider,
         IProductionContextStore contextStore,
-        IDeviceService deviceService,
-        ICapacitySyncTask capacitySync,
-        IDeviceLogSyncTask deviceLogSync,
         IRecipeService recipeService,
-        IPlcConnectionManager plcManager,
+        IBackgroundServiceCoordinator backgroundServices,
         ILogService logger)
     {
+        _serviceProvider = serviceProvider;
         _contextStore = contextStore;
-        _deviceService = deviceService;
-        _capacitySync = capacitySync;
-        _deviceLogSync = deviceLogSync;
         _recipeService = recipeService;
-        _plcManager = plcManager;
+        _backgroundServices = backgroundServices;
         _logger = logger;
     }
 
-    public void Initialize()
+    public async Task<AppStartupResult> StartAsync(CancellationToken cancellationToken = default)
     {
-        _contextStore.LoadFromFile();
-        _recipeService.LoadFromFile();
-        _logger.Info("[Lifecycle] Restored persisted runtime state.");
+        try
+        {
+            _logger.Info("[Lifecycle] Starting application bootstrap.");
+
+            _serviceProvider.ApplyMigrations();
+            _logger.Info("[Lifecycle] EF Core migrations completed.");
+
+            await _serviceProvider.InitializeDapperTablesAsync();
+            _logger.Info("[Lifecycle] Dapper tables initialized.");
+
+            _contextStore.LoadFromFile();
+            _recipeService.LoadFromFile();
+            _logger.Info("[Lifecycle] Restored persisted runtime state.");
+
+            await _backgroundServices.StartAsync(cancellationToken);
+            _logger.Info("[Lifecycle] Background services started.");
+
+            return AppStartupResult.Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger.Error($"[Lifecycle] Startup failed: {ex.Message}");
+            return AppStartupResult.Failure($"应用启动失败：{ex.Message}");
+        }
     }
 
-    public void StartAll(IServiceProvider sp, CancellationToken ct)
-    {
-        _backgroundTasks.Add(_contextStore.StartAutoSaveAsync(ct, intervalSeconds: 30));
-        _backgroundTasks.Add(_deviceService.StartAsync(ct));
-        _backgroundTasks.Add(sp.InitializePlcTasksAsync(ct));
-        _backgroundTasks.Add(sp.StartEdgeDataPipelineRuntimeAsync(ct));
-        _backgroundTasks.Add(_capacitySync.StartAsync(ct));
-        _backgroundTasks.Add(_deviceLogSync.StartAsync(ct));
-
-        _logger.Info("[Lifecycle] Background services started.");
-    }
-
-    public void Shutdown()
+    public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         _contextStore.SaveToFile();
         _recipeService.SaveToFile();
         _logger.Info("[Lifecycle] Persisted runtime state before shutdown.");
 
-        if (_backgroundTasks.Count > 0)
-        {
-            try
-            {
-                Task.WhenAll(_backgroundTasks).Wait(TimeSpan.FromSeconds(8));
-            }
-            catch
-            {
-            }
-        }
-
-        _plcManager.Dispose();
+        await _backgroundServices.StopAsync(cancellationToken);
         _logger.Info("[Lifecycle] Background services stopped.");
     }
 }

@@ -7,14 +7,10 @@ using System.Windows.Threading;
 
 namespace IIoT.Edge.Presentation.Navigation.Features.Production.Monitor;
 
-/// <summary>
-/// 实时数据监控页面视图模型。
-/// 用于展示设备监控数据。
-/// </summary>
 public class MonitorViewModel : PresentationViewModelBase
 {
     public override string ViewId => "Production.Monitor";
-    public override string ViewTitle => "实时数据监控";
+    public override string ViewTitle => "Real-time Monitor";
 
     private readonly IMonitorViewService _monitorViewService;
     private readonly DispatcherTimer _refreshTimer;
@@ -36,13 +32,13 @@ public class MonitorViewModel : PresentationViewModelBase
         {
             Interval = TimeSpan.FromMilliseconds(500)
         };
-        _refreshTimer.Tick += (_, _) => RunViewTaskInBackground(RefreshAsync, "数据更新失败");
+        _refreshTimer.Tick += (_, _) => RunViewTaskInBackground(RefreshAsync, "Monitor refresh failed");
         _refreshTimer.Start();
     }
 
     public override async Task OnActivatedAsync()
     {
-        await RunViewTaskAsync(RefreshAsync, "监控数据加载失败");
+        await RunViewTaskAsync(RefreshAsync, "Monitor data load failed");
     }
 
     private async Task RefreshAsync()
@@ -71,18 +67,17 @@ public class MonitorViewModel : PresentationViewModelBase
                 tab.YieldAll = snapshot.YieldAll;
                 tab.DeviceDataSummary = snapshot.DeviceDataSummary;
                 tab.StepSummary = snapshot.StepSummary;
+                tab.CloudLinkStatus = snapshot.CloudLinkStatus;
+                tab.RetryQueueStatus = snapshot.RetryQueueStatus;
                 tab.CellCount = snapshot.CellCount;
                 tab.CellTable = snapshot.CellTable;
             });
     }
 }
 
-/// <summary>
-/// 设备监控视图模型。
-/// </summary>
 public class DeviceTabVm : BaseNotifyPropertyChanged
 {
-    private string _deviceName = "";
+    private string _deviceName = string.Empty;
     public string DeviceName
     {
         get => _deviceName;
@@ -173,18 +168,32 @@ public class DeviceTabVm : BaseNotifyPropertyChanged
         set { _yieldAll = value; OnPropertyChanged(); }
     }
 
-    private string _deviceDataSummary = "暂无数据";
+    private string _deviceDataSummary = "No data";
     public string DeviceDataSummary
     {
         get => _deviceDataSummary;
         set { _deviceDataSummary = value; OnPropertyChanged(); }
     }
 
-    private string _stepSummary = "暂无步骤";
+    private string _stepSummary = "No steps";
     public string StepSummary
     {
         get => _stepSummary;
         set { _stepSummary = value; OnPropertyChanged(); }
+    }
+
+    private string _cloudLinkStatus = "Cloud status unknown";
+    public string CloudLinkStatus
+    {
+        get => _cloudLinkStatus;
+        set { _cloudLinkStatus = value; OnPropertyChanged(); }
+    }
+
+    private string _retryQueueStatus = "Retry queue unknown";
+    public string RetryQueueStatus
+    {
+        get => _retryQueueStatus;
+        set { _retryQueueStatus = value; OnPropertyChanged(); }
     }
 
     private int _cellCount;

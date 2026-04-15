@@ -28,8 +28,10 @@ internal sealed class LocalRecipeParamValidator : IEditorValidator<LocalRecipePa
         var hasMin = !string.IsNullOrWhiteSpace(model.Min);
         var hasMax = !string.IsNullOrWhiteSpace(model.Max);
 
-        var minValid = !hasMin || double.TryParse(model.Min, out var minValue);
-        var maxValid = !hasMax || double.TryParse(model.Max, out var maxValue);
+        double minValue = 0;
+        double maxValue = 0;
+        var minValid = !hasMin || double.TryParse(model.Min, out minValue);
+        var maxValid = !hasMax || double.TryParse(model.Max, out maxValue);
 
         if (!minValid)
             issues.Add(new ValidationIssue("最小值必须是有效数字。", nameof(model.Min)));

@@ -134,10 +134,16 @@ public class ProductionContextStore : IProductionContextStore
 
     public async Task StartAutoSaveAsync(CancellationToken ct, int intervalSeconds = 30)
     {
-        while (!ct.IsCancellationRequested)
+        try
         {
-            await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
-            SaveToFile();
+            while (!ct.IsCancellationRequested)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(intervalSeconds), ct);
+                SaveToFile();
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
         }
     }
 }

@@ -15,6 +15,11 @@ public interface IPlcConnectionManager : IDisposable
     Task InitializeAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// 停止所有 PLC 后台任务并释放连接资源。
+    /// </summary>
+    Task StopAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// 配置保存后热重载指定设备，不影响其他设备上下文。
     /// </summary>
     Task ReloadAsync(string deviceName, CancellationToken ct = default);

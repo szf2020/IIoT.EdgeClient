@@ -1,29 +1,32 @@
-using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
-using IIoT.Edge.Application.Abstractions.Logging;
 using IIoT.Edge.Application.Abstractions.DataPipeline;
 using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
 using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
 using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
 using IIoT.Edge.Application.Abstractions.Device;
+using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application.Abstractions.Tasks;
+using IIoT.Edge.Application.Common.Tasks;
 using IIoT.Edge.Infrastructure.Persistence.Dapper;
+using IIoT.Edge.Runtime.DataPipeline.Services;
+using IIoT.Edge.Runtime.DataPipeline.Tasks;
+using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
 using IIoT.Edge.TestSimulator.Consumers;
 using IIoT.Edge.TestSimulator.Fakes;
 using IIoT.Edge.TestSimulator.Scenarios;
 using IIoT.Edge.TestSimulator.Services;
 using IIoT.Edge.TestSimulator.Tasks;
 using IIoT.Edge.TestSimulator.Views;
-using IIoT.Edge.Runtime.DataPipeline.Services;
-using IIoT.Edge.Runtime.DataPipeline.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Windows;
+using WpfApplication = System.Windows.Application;
 
 namespace IIoT.Edge.TestSimulator;
 
-public partial class App : Application
+public partial class App : WpfApplication
 {
-    private IServiceProvider _sp = null!;
-    private CancellationTokenSource _appCts = new();
+    private ServiceProvider? _serviceProvider;
+    private readonly CancellationTokenSource _appCts = new();
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -31,29 +34,58 @@ public partial class App : Application
 
         var services = new ServiceCollection();
         ConfigureServices(services);
-        _sp = services.BuildServiceProvider();
+        _serviceProvider = services.BuildServiceProvider();
 
-        await _sp.InitializeDapperTablesAsync();
+        try
+        {
+            await _serviceProvider.InitializeDapperTablesAsync();
 
-        var processQueue = _sp.GetRequiredService<ProcessQueueTask>();
-        _ = processQueue.StartAsync(_appCts.Token);
+            var backgroundCoordinator = _serviceProvider.GetRequiredService<IBackgroundServiceCoordinator>();
+            await backgroundCoordinator.StartAsync(_appCts.Token);
 
-        var mainWindow = _sp.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"模拟器启动失败。\n\n{ex.Message}",
+                "IIoT Edge Test Simulator",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            Shutdown(-1);
+        }
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _appCts.Cancel();
-        _appCts.Dispose();
-        base.OnExit(e);
+        try
+        {
+            _appCts.Cancel();
+
+            if (_serviceProvider is not null)
+            {
+                var backgroundCoordinator = _serviceProvider.GetRequiredService<IBackgroundServiceCoordinator>();
+                using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                backgroundCoordinator.StopAsync(shutdownCts.Token).GetAwaiter().GetResult();
+                _serviceProvider.Dispose();
+                _serviceProvider = null;
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            _appCts.Dispose();
+            base.OnExit(e);
+        }
     }
 
     private static void ConfigureServices(IServiceCollection services)
     {
         var testDbDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data");
 
-        // Fakes
         services.AddSingleton<FakeHttpClient>();
         services.AddSingleton<ICloudHttpClient>(sp => sp.GetRequiredService<FakeHttpClient>());
 
@@ -72,17 +104,14 @@ public partial class App : Application
         services.AddSingleton<FakeDeviceLogSyncTask>();
         services.AddSingleton<IDeviceLogSyncTask>(sp => sp.GetRequiredService<FakeDeviceLogSyncTask>());
 
-        // 真实 Dapper Store
         services.AddDapperPersistenceInfrastructure(testDbDir);
 
-        // ShiftConfig（历史数据场景需要用到）
         services.AddSingleton(new ShiftConfig
         {
             DayStart = "08:30",
             DayEnd = "20:30"
         });
 
-        // 消费者
         services.AddSingleton<SimCapacityConsumer>();
         services.AddSingleton<ICapacityConsumer>(sp => sp.GetRequiredService<SimCapacityConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICapacityConsumer>());
@@ -92,12 +121,10 @@ public partial class App : Application
         services.AddSingleton<ICloudBatchConsumer>(sp => sp.GetRequiredService<SimCloudConsumer>());
         services.AddSingleton<ICellDataConsumer>(sp => sp.GetRequiredService<ICloudConsumer>());
 
-        // DataPipeline 核心
         services.AddSingleton<DataPipelineService>();
         services.AddSingleton<IDataPipelineService>(sp => sp.GetRequiredService<DataPipelineService>());
         services.AddSingleton<ProcessQueueTask>();
 
-        // TestRetryTask
         services.AddSingleton<TestRetryTask>(sp => new TestRetryTask(
             sp.GetRequiredService<ILogService>(),
             sp.GetRequiredService<IFailedRecordStore>(),
@@ -107,19 +134,21 @@ public partial class App : Application
             sp.GetRequiredService<ICapacitySyncTask>(),
             sp.GetService<ICloudBatchConsumer>()));
 
-        // 辅助服务
+        services.AddSingleton<IBackgroundServiceCoordinator, BackgroundServiceCoordinator>();
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new LongRunningBackgroundTaskGroupService(
+                "Simulator.DataPipeline",
+                new IBackgroundTask[] { sp.GetRequiredService<ProcessQueueTask>() }));
+
         services.AddSingleton<SimDataHelper>();
 
-        // 场景
         services.AddSingleton<OnlinePassScenario>();
         services.AddSingleton<OfflineBufferScenario>();
         services.AddSingleton<RetryScenario>();
         services.AddSingleton<HistoricalDataScenario>();
         services.AddSingleton<ScenarioRunner>();
 
-        // Views
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
     }
 }
-

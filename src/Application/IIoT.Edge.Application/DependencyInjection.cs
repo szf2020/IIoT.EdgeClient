@@ -6,6 +6,8 @@ using IIoT.Edge.Application.Features.Production.DataView;
 using IIoT.Edge.Application.Features.Production.Equipment;
 using IIoT.Edge.Application.Features.Production.Monitor;
 using IIoT.Edge.Application.Features.SysLog.LogView;
+using IIoT.Edge.Application.Common.Tasks;
+using IIoT.Edge.Application.Abstractions.Tasks;
 using IIoT.Edge.SharedKernel.DataPipeline.CellData;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,6 +35,7 @@ public static class DependencyInjection
         services.AddTransient<IMonitorViewService, MonitorViewService>();
         services.AddTransient<IEquipmentPanelService, EquipmentPanelService>();
         services.AddTransient<ILogViewService, LogViewService>();
+        services.AddSingleton<IBackgroundServiceCoordinator, BackgroundServiceCoordinator>();
         return services;
     }
 }

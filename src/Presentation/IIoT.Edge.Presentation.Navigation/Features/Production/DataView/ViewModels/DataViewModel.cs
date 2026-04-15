@@ -85,7 +85,7 @@ public class DataViewModel : PresentationViewModelBase
         TodayNg = snapshot.TodayNg;
         TodayYield = snapshot.TodayYield;
 
-        ReplaceItems(
+        ReplaceItems<ProductionRecordVm>(
             Records,
             snapshot.Records.Select(record => new ProductionRecordVm
             {

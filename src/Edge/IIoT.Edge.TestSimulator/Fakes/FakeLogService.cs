@@ -23,7 +23,7 @@ public sealed class FakeLogService : ILogService
             Message = message
         };
 
-        var dispatcher = Application.Current?.Dispatcher;
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
         if (dispatcher != null && !dispatcher.CheckAccess())
             dispatcher.Invoke(() => Entries.Add(entry));
         else

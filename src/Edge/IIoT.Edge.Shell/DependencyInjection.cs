@@ -1,6 +1,11 @@
-﻿using IIoT.Edge.Application;
-using IIoT.Edge.Application.Abstractions.Logging;
+using IIoT.Edge.Application;
+using IIoT.Edge.Application.Abstractions.Context;
+using IIoT.Edge.Application.Abstractions.DataPipeline;
+using IIoT.Edge.Application.Abstractions.DataPipeline.SyncTask;
+using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.Application.Abstractions.Plc;
+using IIoT.Edge.Application.Abstractions.Tasks;
+using IIoT.Edge.Application.Common.Tasks;
 using IIoT.Edge.Infrastructure.DeviceComm;
 using IIoT.Edge.Infrastructure.Integration;
 using IIoT.Edge.Infrastructure.Persistence.Dapper;
@@ -10,6 +15,7 @@ using IIoT.Edge.Presentation.Panels;
 using IIoT.Edge.Presentation.Shell;
 using IIoT.Edge.Runtime;
 using IIoT.Edge.Runtime.DataPipeline;
+using IIoT.Edge.Runtime.DataPipeline.Tasks;
 using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.Shell.ViewModels;
@@ -65,6 +71,7 @@ public static class DependencyInjection
 
         services.AddUiShared();
         services.AddAutoMapper(
+            _ => { },
             typeof(IIoT.Edge.Application.DependencyInjection).Assembly,
             typeof(IIoT.Edge.Presentation.Shell.DependencyInjection).Assembly,
             typeof(IIoT.Edge.Presentation.Navigation.DependencyInjection).Assembly,
@@ -75,20 +82,49 @@ public static class DependencyInjection
         services.AddNavigationPresentation();
         services.AddPanelPresentation();
 
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
+                "RuntimeState.AutoSave",
+                ct => sp.GetRequiredService<IProductionContextStore>()
+                    .StartAutoSaveAsync(ct, intervalSeconds: 30)));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
+                "Device.Heartbeat",
+                ct => sp.GetRequiredService<IDeviceService>().StartAsync(ct),
+                _ => sp.GetRequiredService<IDeviceService>().StopAsync()));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
+                "PLC.Runtime",
+                ct => sp.GetRequiredService<IPlcConnectionManager>().InitializeAsync(ct),
+                ct => sp.GetRequiredService<IPlcConnectionManager>().StopAsync(ct)));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new LongRunningBackgroundTaskGroupService(
+                "DataPipeline.Runtime",
+                new IBackgroundTask[] { sp.GetRequiredService<ProcessQueueTask>() }
+                    .Concat(sp.GetServices<RetryTask>())));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
+                "Cloud.CapacitySync",
+                ct => sp.GetRequiredService<ICapacitySyncTask>().StartAsync(ct),
+                _ => sp.GetRequiredService<ICapacitySyncTask>().StopAsync()));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
+                "Cloud.DeviceLogSync",
+                ct => sp.GetRequiredService<IDeviceLogSyncTask>().StartAsync(ct),
+                _ => sp.GetRequiredService<IDeviceLogSyncTask>().StopAsync()));
+
         services.AddSingleton<INavigationService, NavigationService>();
-        services.AddSingleton<AppLifecycleManager>();
+        services.AddSingleton<IAppLifecycleCoordinator, AppLifecycleManager>();
+        services.AddSingleton<AppLifecycleManager>(sp =>
+            (AppLifecycleManager)sp.GetRequiredService<IAppLifecycleCoordinator>());
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<MainWindow>();
 
         return services;
-    }
-
-    public static async Task InitializePlcTasksAsync(this IServiceProvider sp, CancellationToken ct = default)
-    {
-        var plcManager = sp.GetRequiredService<IPlcConnectionManager>();
-        var logService = sp.GetRequiredService<ILogService>();
-
-        await plcManager.InitializeAsync(ct);
-        logService.Info("PLC initialization completed.");
     }
 }

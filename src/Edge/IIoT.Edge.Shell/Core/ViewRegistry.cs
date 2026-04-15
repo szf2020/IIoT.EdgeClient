@@ -1,18 +1,22 @@
-﻿using IIoT.Edge.UI.Shared.Modularity;
+using IIoT.Edge.UI.Shared.Modularity;
 
 namespace IIoT.Edge.Shell.Core;
 
 public class ViewRegistry : IViewRegistry
 {
-    private readonly Dictionary<string, Type> _viewModelMap = new();
-    private readonly Dictionary<string, Type> _viewMap = new();
+    private readonly Dictionary<string, ViewRegistration> _views = new();
     private readonly List<MenuInfo> _menus = new();
     private readonly List<AnchorableInfo> _anchorables = new();
 
-    public void RegisterRoute(string viewId, Type viewType, Type viewModelType)
+    public void RegisterRoute(string viewId, Type viewType, Type viewModelType, bool cacheView = true)
     {
-        _viewModelMap[viewId] = viewModelType;
-        _viewMap[viewId] = viewType;
+        _views[viewId] = new ViewRegistration
+        {
+            ViewId = viewId,
+            ViewType = viewType,
+            ViewModelType = viewModelType,
+            CacheView = cacheView
+        };
     }
 
     public void RegisterMenu(MenuInfo menuInfo)
@@ -20,25 +24,25 @@ public class ViewRegistry : IViewRegistry
         _menus.Add(menuInfo);
     }
 
-    public void RegisterAnchorable(AnchorableInfo info, Type viewType, Type viewModelType)
+    public void RegisterAnchorable(AnchorableInfo info, Type viewType, Type viewModelType, bool cacheView = true)
     {
         _anchorables.Add(info);
-        _viewModelMap[info.ContentId] = viewModelType;
-        _viewMap[info.ContentId] = viewType;
+        _views[info.ContentId] = new ViewRegistration
+        {
+            ViewId = info.ContentId,
+            ViewType = viewType,
+            ViewModelType = viewModelType,
+            CacheView = cacheView
+        };
     }
 
-    public Type? GetViewModelType(string viewId)
+    public ViewRegistration? GetViewRegistration(string viewId)
     {
-        _viewModelMap.TryGetValue(viewId, out var type);
-        return type;
-    }
-
-    public Type? GetViewType(string viewId)
-    {
-        _viewMap.TryGetValue(viewId, out var type);
-        return type;
+        _views.TryGetValue(viewId, out var registration);
+        return registration;
     }
 
     public IReadOnlyList<MenuInfo> GetAllMenus() => _menus.AsReadOnly();
+
     public IReadOnlyList<AnchorableInfo> GetAllAnchorables() => _anchorables.AsReadOnly();
 }

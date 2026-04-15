@@ -179,7 +179,15 @@ public class RecipeViewModel : CrudPageViewModelBase
         UpdatedAt = snapshot.UpdatedAt;
         IsCloudSource = snapshot.IsCloudSource;
 
-        ReplaceItems(Params, snapshot.Params);
+        ReplaceItems(
+            Params,
+            snapshot.Params.Select(param => new RecipeParamVm
+            {
+                Name = param.Name,
+                Min = param.Min,
+                Max = param.Max,
+                Unit = param.Unit
+            }));
     }
 }
 

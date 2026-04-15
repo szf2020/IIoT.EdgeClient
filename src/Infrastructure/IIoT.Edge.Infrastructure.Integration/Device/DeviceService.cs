@@ -14,8 +14,10 @@ public class DeviceService : IDeviceService
     private readonly DeviceSessionFileCacheStore _cacheStore;
     private readonly ILogService _logger;
     private readonly object _stateLock = new();
+    private readonly object _lifecycleLock = new();
     private CancellationTokenSource? _cts;
     private Task? _heartbeatTask;
+    private bool _isRunning;
     private static readonly TimeSpan OnlineInterval = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan OfflineInterval = TimeSpan.FromSeconds(10);
 
@@ -36,42 +38,75 @@ public class DeviceService : IDeviceService
 
     public Task StartAsync(CancellationToken ct)
     {
-        _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token), _cts.Token);
+        lock (_lifecycleLock)
+        {
+            if (_isRunning)
+            {
+                return Task.CompletedTask;
+            }
+
+            _isRunning = true;
+            _cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            _heartbeatTask = Task.Run(() => HeartbeatLoopAsync(_cts.Token), CancellationToken.None);
+        }
+
         return Task.CompletedTask;
     }
 
     public async Task StopAsync()
     {
-        if (_cts is not null)
+        CancellationTokenSource? localCts;
+        Task? localTask;
+
+        lock (_lifecycleLock)
         {
-            await _cts.CancelAsync();
-            if (_heartbeatTask is not null)
+            if (!_isRunning)
             {
-                try { await _heartbeatTask; } catch (OperationCanceledException) { }
+                return;
             }
-            _cts.Dispose();
+
+            _isRunning = false;
+            localCts = _cts;
+            localTask = _heartbeatTask;
             _cts = null;
+            _heartbeatTask = null;
+        }
+
+        if (localCts is not null)
+        {
+            await localCts.CancelAsync();
+            if (localTask is not null)
+            {
+                try
+                {
+                    await localTask;
+                }
+                catch (OperationCanceledException)
+                {
+                }
+            }
+
+            localCts.Dispose();
         }
     }
 
     private async Task HeartbeatLoopAsync(CancellationToken ct)
     {
         _logger.Info("[DeviceService] Heartbeat loop started.");
-        await IdentifyOnceAsync();
+        await IdentifyOnceAsync(ct);
 
         while (!ct.IsCancellationRequested)
         {
             var interval = CurrentState == NetworkState.Online ? OnlineInterval : OfflineInterval;
             try { await Task.Delay(interval, ct); }
             catch (OperationCanceledException) { break; }
-            await IdentifyOnceAsync();
+            await IdentifyOnceAsync(ct);
         }
 
         _logger.Info("[DeviceService] Heartbeat loop stopped.");
     }
 
-    private async Task IdentifyOnceAsync()
+    private async Task IdentifyOnceAsync(CancellationToken ct)
     {
         var instanceId = _instanceIdResolver.ResolveInstanceId();
         try
@@ -80,7 +115,7 @@ public class DeviceService : IDeviceService
             var deviceInstancePath = _endpointProvider.GetDeviceInstancePath();
             var url = _endpointProvider.BuildUrl($"{deviceInstancePath}?macAddress={Uri.EscapeDataString(instanceId)}&clientCode={Uri.EscapeDataString(clientCode)}");
 
-            var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(url, ct).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {
                 _logger.Warn($"[DeviceService] Device identify failed: {response.StatusCode}");
@@ -88,7 +123,7 @@ public class DeviceService : IDeviceService
                 return;
             }
 
-            var dto = await response.Content.ReadFromJsonAsync<DeviceResponseDto>().ConfigureAwait(false);
+            var dto = await response.Content.ReadFromJsonAsync<DeviceResponseDto>(ct).ConfigureAwait(false);
             if (dto is null)
             {
                 _logger.Warn("[DeviceService] Device identify returned empty payload.");
@@ -105,6 +140,9 @@ public class DeviceService : IDeviceService
             };
 
             GoOnline(session);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
         }
         catch (TaskCanceledException)
         {
@@ -125,6 +163,9 @@ public class DeviceService : IDeviceService
 
     private void GoOnline(DeviceSession session)
     {
+        var raiseStateChanged = false;
+        var raiseDeviceIdentified = false;
+
         lock (_stateLock)
         {
             var deviceChanged = CurrentDevice is null || CurrentDevice.DeviceId != session.DeviceId || CurrentDevice.DeviceName != session.DeviceName || CurrentDevice.ProcessId != session.ProcessId;
@@ -136,20 +177,33 @@ public class DeviceService : IDeviceService
             if (deviceChanged)
             {
                 _logger.Info($"[DeviceService] Device updated: {session.DeviceName}");
-                DeviceIdentified?.Invoke(CurrentDevice);
+                raiseDeviceIdentified = true;
             }
 
             if (CurrentState != NetworkState.Online)
             {
                 CurrentState = NetworkState.Online;
                 _logger.Info("[DeviceService] State changed to Online.");
-                NetworkStateChanged?.Invoke(NetworkState.Online);
+                raiseStateChanged = true;
             }
+        }
+
+        if (raiseDeviceIdentified)
+        {
+            DeviceIdentified?.Invoke(CurrentDevice);
+        }
+
+        if (raiseStateChanged)
+        {
+            NetworkStateChanged?.Invoke(NetworkState.Online);
         }
     }
 
     private void GoOffline(string instanceId)
     {
+        var raiseStateChanged = false;
+        var raiseDeviceIdentified = false;
+
         lock (_stateLock)
         {
             if (CurrentDevice is null)
@@ -161,7 +215,7 @@ public class DeviceService : IDeviceService
                     {
                         CurrentDevice = cached;
                         _logger.Info($"[DeviceService] Loaded local cache: {cached.DeviceName}");
-                        DeviceIdentified?.Invoke(CurrentDevice);
+                        raiseDeviceIdentified = true;
                     }
                 }
                 catch (Exception ex)
@@ -174,8 +228,18 @@ public class DeviceService : IDeviceService
             {
                 CurrentState = NetworkState.Offline;
                 _logger.Info("[DeviceService] State changed to Offline.");
-                NetworkStateChanged?.Invoke(NetworkState.Offline);
+                raiseStateChanged = true;
             }
+        }
+
+        if (raiseDeviceIdentified)
+        {
+            DeviceIdentified?.Invoke(CurrentDevice);
+        }
+
+        if (raiseStateChanged)
+        {
+            NetworkStateChanged?.Invoke(NetworkState.Offline);
         }
     }
 }

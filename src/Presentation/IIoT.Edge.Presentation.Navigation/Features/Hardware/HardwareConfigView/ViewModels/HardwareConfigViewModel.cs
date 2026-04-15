@@ -120,8 +120,8 @@ public class HardwareConfigViewModel : CrudPageViewModelBase
     {
         var result = await _crudService.LoadAsync();
 
-        ReplaceItems(NetworkDevices, result.NetworkDevices);
-        ReplaceItems(SerialDevices, result.SerialDevices);
+        ReplaceItems<NetworkDeviceVm>(NetworkDevices, result.NetworkDevices);
+        ReplaceItems<SerialDeviceVm>(SerialDevices, result.SerialDevices);
 
         if (NetworkDevices.Count > 0)
             SelectedNetworkDevice = NetworkDevices[0];
@@ -137,7 +137,7 @@ public class HardwareConfigViewModel : CrudPageViewModelBase
             IoPageSize);
 
         IoTotalCount = result.TotalCount;
-        ReplaceItems(IoMappings, result.Items);
+        ReplaceItems<IoMappingVm>(IoMappings, result.Items);
     }
 
     private async Task IoNextPageAsync()

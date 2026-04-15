@@ -1,5 +1,3 @@
-﻿using IIoT.Edge.Infrastructure.Persistence.Dapper;
-using IIoT.Edge.Infrastructure.Persistence.EfCore;
 using IIoT.Edge.Shell.Core;
 using IIoT.Edge.UI.Shared.Modularity;
 using Microsoft.Extensions.Configuration;
@@ -7,13 +5,14 @@ using Microsoft.Extensions.DependencyInjection;
 using System.IO;
 using System.Threading;
 using System.Windows;
+using WpfApplication = System.Windows.Application;
 
 namespace IIoT.Edge.Shell;
 
-public partial class App : Application
+public partial class App : WpfApplication
 {
-    private IServiceProvider _sp = null!;
-    private CancellationTokenSource _appCts = new();
+    private ServiceProvider? _serviceProvider;
+    private readonly CancellationTokenSource _appCts = new();
     private Mutex? _instanceMutex;
 
     public App()
@@ -26,7 +25,7 @@ public partial class App : Application
         base.OnStartup(e);
 
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
             .Build();
 
@@ -36,46 +35,44 @@ public partial class App : Application
             return;
         }
 
-        _sp = ConfigureServices(configuration).BuildServiceProvider();
-        _sp.ApplyMigrations();
-
-        try
+        _serviceProvider = ConfigureServices(configuration).BuildServiceProvider();
+        var lifecycle = _serviceProvider.GetRequiredService<IAppLifecycleCoordinator>();
+        var startupResult = await lifecycle.StartAsync(_appCts.Token);
+        if (!startupResult.Success)
         {
-            await _sp.InitializeDapperTablesAsync();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"Database initialization failed.\n\n{ex.Message}",
-                "IIoT Edge Client - Startup Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown();
+            ShowStartupError(startupResult.Message ?? "应用启动失败。");
+            Shutdown(-1);
             return;
         }
 
-        var lifecycle = _sp.GetRequiredService<AppLifecycleManager>();
-        lifecycle.Initialize();
-
-        var mainWindow = _sp.GetRequiredService<MainWindow>();
+        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
         mainWindow.Show();
-
-        lifecycle.StartAll(_sp, _appCts.Token);
     }
 
     protected override void OnExit(ExitEventArgs e)
     {
-        _appCts.Cancel();
-
-        if (_sp is not null)
+        try
         {
-            var lifecycle = _sp.GetRequiredService<AppLifecycleManager>();
-            lifecycle.Shutdown();
-        }
+            _appCts.Cancel();
 
-        ReleaseMutex();
-        base.OnExit(e);
-        Environment.Exit(0);
+            if (_serviceProvider is not null)
+            {
+                var lifecycle = _serviceProvider.GetRequiredService<IAppLifecycleCoordinator>();
+                using var shutdownCts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+                lifecycle.StopAsync(shutdownCts.Token).GetAwaiter().GetResult();
+                _serviceProvider.Dispose();
+                _serviceProvider = null;
+            }
+        }
+        catch
+        {
+        }
+        finally
+        {
+            ReleaseMutex();
+            _appCts.Dispose();
+            base.OnExit(e);
+        }
     }
 
     private bool TryAcquireInstanceLock(IConfiguration configuration)
@@ -125,5 +122,14 @@ public partial class App : Application
         var dbDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "db");
         Directory.CreateDirectory(dbDir);
         return dbDir;
+    }
+
+    private static void ShowStartupError(string message)
+    {
+        MessageBox.Show(
+            message,
+            "IIoT Edge Client - Startup Error",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
     }
 }

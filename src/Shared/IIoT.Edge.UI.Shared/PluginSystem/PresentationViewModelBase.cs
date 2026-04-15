@@ -2,10 +2,6 @@ using System.Collections.ObjectModel;
 
 namespace IIoT.Edge.UI.Shared.PluginSystem;
 
-/// <summary>
-/// 展示层视图模型基类。
-/// 统一封装状态提示、列表同步和异步任务执行辅助逻辑。
-/// </summary>
 public abstract class PresentationViewModelBase : ViewModelBase
 {
     private bool _isBusy;
@@ -70,7 +66,9 @@ public abstract class PresentationViewModelBase : ViewModelBase
     {
         target.Clear();
         foreach (var item in items)
+        {
             target.Add(item);
+        }
     }
 
     protected static void SyncItemsByKey<TTarget, TSource, TKey>(
@@ -100,7 +98,9 @@ public abstract class PresentationViewModelBase : ViewModelBase
         var sourceKeys = sourceList.Select(sourceKeySelector).ToHashSet();
         var staleItems = target.Where(item => !sourceKeys.Contains(targetKeySelector(item))).ToList();
         foreach (var staleItem in staleItems)
+        {
             target.Remove(staleItem);
+        }
     }
 
     protected Task RunViewTaskAsync(
@@ -126,26 +126,34 @@ public abstract class PresentationViewModelBase : ViewModelBase
         bool clearFeedback)
     {
         if (trackBusy && IsBusy)
+        {
             return;
+        }
 
         if (clearFeedback)
+        {
             ClearFeedback();
+        }
 
         try
         {
             if (trackBusy)
+            {
                 IsBusy = true;
+            }
 
             await execute();
         }
         catch (Exception ex)
         {
-            SetError($"{errorPrefix}：{ex.Message}");
+            SetError($"{errorPrefix}: {ex.Message}");
         }
         finally
         {
             if (trackBusy)
+            {
                 IsBusy = false;
+            }
         }
     }
 }

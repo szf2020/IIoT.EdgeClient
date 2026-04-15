@@ -71,7 +71,7 @@ public class ParamViewModel : CrudPageViewModelBase
     {
         var result = await _crudService.LoadAsync();
 
-        ReplaceItems(GeneralParams, result.GeneralParams);
+        ReplaceItems<GeneralParamVm>(GeneralParams, result.GeneralParams);
 
         DeviceParamGroups.Clear();
         foreach (var header in result.DeviceGroups)
@@ -92,7 +92,7 @@ public class ParamViewModel : CrudPageViewModelBase
     private async Task LoadDeviceParamsAsync(DeviceParamGroupVm group)
     {
         var parameters = await _crudService.LoadDeviceParamsAsync(group.DeviceId);
-        ReplaceItems(group.Params, parameters);
+        ReplaceItems<DeviceParamVm>(group.Params, parameters);
     }
 
     private async Task<CrudOperationResult> SaveAsync()
@@ -116,7 +116,7 @@ public class ParamViewModel : CrudPageViewModelBase
 
         await LoadDeviceParamsAsync(SelectedGroup);
         var result = await _crudService.LoadAsync();
-        ReplaceItems(GeneralParams, result.GeneralParams);
+        ReplaceItems<GeneralParamVm>(GeneralParams, result.GeneralParams);
 
         return CrudOperationResult.Success("Parameter configuration saved.");
     }

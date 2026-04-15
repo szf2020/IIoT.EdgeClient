@@ -1,4 +1,4 @@
-﻿using IIoT.Edge.UI.Shared.Modularity;
+using IIoT.Edge.UI.Shared.Modularity;
 using IIoT.Edge.UI.Shared.PluginSystem;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -24,43 +24,34 @@ public class NavigationService : INavigationService
 
     public void NavigateTo(string viewId)
     {
-        var viewModelType = _viewRegistry.GetViewModelType(viewId);
-        if (viewModelType is null)
+        var registration = _viewRegistry.GetViewRegistration(viewId);
+        if (registration is null)
         {
             System.Diagnostics.Debug.WriteLine($"[Nav] 找不到 ViewId: {viewId}");
             return;
         }
 
-        var viewModel = _serviceProvider.GetRequiredService(viewModelType) as ViewModelBase;
+        var viewModel = _serviceProvider.GetRequiredService(registration.ViewModelType) as ViewModelBase;
         if (viewModel is null)
         {
-            System.Diagnostics.Debug.WriteLine($"[Nav] Resolve失败: {viewModelType.Name}");
+            System.Diagnostics.Debug.WriteLine($"[Nav] Resolve 失败: {registration.ViewModelType.Name}");
             return;
         }
 
-        if (!_viewCache.TryGetValue(viewId, out var view))
+        FrameworkElement view;
+        if (registration.CacheView && _viewCache.TryGetValue(viewId, out var cachedView))
         {
-            var viewType = _viewRegistry.GetViewType(viewId);
-            if (viewType is null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Nav] 找不到 ViewType: {viewId}");
-                return;
-            }
-
-            view = Activator.CreateInstance(viewType) as FrameworkElement;
-            if (view is null)
-            {
-                System.Diagnostics.Debug.WriteLine($"[Nav] 创建View失败: {viewType.Name}");
-                return;
-            }
-
-            view.DataContext = viewModel;
-            _viewCache[viewId] = view;
-            System.Diagnostics.Debug.WriteLine($"[Nav] 首次创建View: {viewId}");
+            view = cachedView;
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine($"[Nav] 命中View缓存: {viewId}");
+            view = (FrameworkElement)ActivatorUtilities.CreateInstance(_serviceProvider, registration.ViewType);
+            view.DataContext = viewModel;
+
+            if (registration.CacheView)
+            {
+                _viewCache[viewId] = view;
+            }
         }
 
         CurrentViewModel = viewModel;

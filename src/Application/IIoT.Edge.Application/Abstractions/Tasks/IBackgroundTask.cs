@@ -9,4 +9,5 @@ public interface IBackgroundTask
 {
     string TaskName { get; }
     Task StartAsync(CancellationToken ct);
+    Task StopAsync(CancellationToken ct) => Task.CompletedTask;
 }

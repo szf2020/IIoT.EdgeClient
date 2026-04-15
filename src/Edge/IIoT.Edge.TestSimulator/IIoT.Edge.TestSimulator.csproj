@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Infrastructure\IIoT.Edge.Infrastructure.Persistence.Dapper\IIoT.Edge.Infrastructure.Persistence.Dapper.csproj" />
+    <ProjectReference Include="..\..\Shared\IIoT.Edge.UI.Shared\IIoT.Edge.UI.Shared.csproj" />
     <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime\IIoT.Edge.Runtime.csproj" />
     <ProjectReference Include="..\..\Runtime\IIoT.Edge.Runtime.DataPipeline\IIoT.Edge.Runtime.DataPipeline.csproj" />
     <ProjectReference Include="..\..\Application\IIoT.Edge.Application\IIoT.Edge.Application.csproj" />

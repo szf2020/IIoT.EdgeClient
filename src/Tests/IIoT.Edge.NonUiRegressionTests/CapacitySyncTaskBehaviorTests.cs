@@ -1,0 +1,182 @@
+using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
+using IIoT.Edge.Infrastructure.Integration.Capacity;
+using IIoT.Edge.SharedKernel.DataPipeline.Capacity;
+using System.Text.Json;
+using DeviceSession = IIoT.Edge.Application.Abstractions.Device.DeviceSession;
+using NetworkState = IIoT.Edge.Application.Abstractions.Device.NetworkState;
+
+namespace IIoT.Edge.NonUiRegressionTests;
+
+public sealed class CapacitySyncTaskBehaviorTests
+{
+    [Fact]
+    public async Task RetryBuffer_WhenOnlineAndAllPostsSucceed_ShouldPostAllAndClearBuffer()
+    {
+        var cloudHttp = new FakeCloudHttpClient();
+        cloudHttp.EnqueuePostResult(true);
+        cloudHttp.EnqueuePostResult(true);
+
+        var deviceService = new FakeDeviceService();
+        var deviceId = Guid.NewGuid();
+        deviceService.SetOnline(new DeviceSession
+        {
+            DeviceId = deviceId,
+            DeviceName = "PLC-A",
+            MacAddress = "00-11-22-33-44-55",
+            ProcessId = Guid.NewGuid()
+        });
+
+        var bufferStore = new FakeCapacityBufferStore();
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = "2026-04-15",
+            Hour = 8,
+            MinuteBucket = 0,
+            ShiftCode = "D",
+            Total = 12,
+            OkCount = 11,
+            NgCount = 1,
+            PlcName = "PLC-A"
+        });
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = "2026-04-15",
+            Hour = 23,
+            MinuteBucket = 30,
+            ShiftCode = "N",
+            Total = 5,
+            OkCount = 4,
+            NgCount = 1,
+            PlcName = "PLC-A"
+        });
+
+        var task = CreateTask(cloudHttp, deviceService, bufferStore, new FakeLogService());
+
+        var result = await task.RetryBufferAsync();
+
+        Assert.True(result);
+        Assert.Equal(2, cloudHttp.PostCallCount);
+        Assert.Equal(1, bufferStore.ClearAllCallCount);
+
+        var payload1 = ParsePayload(cloudHttp.PostPayloads[0]);
+        Assert.Equal(deviceId, payload1.GetProperty("deviceId").GetGuid());
+        Assert.Equal("08:00-08:30", payload1.GetProperty("timeLabel").GetString());
+        Assert.Equal("D", payload1.GetProperty("shiftCode").GetString());
+        Assert.Equal(12, payload1.GetProperty("totalCount").GetInt32());
+        Assert.Equal("PLC-A", payload1.GetProperty("plcName").GetString());
+
+        var payload2 = ParsePayload(cloudHttp.PostPayloads[1]);
+        Assert.Equal("23:30-00:00", payload2.GetProperty("timeLabel").GetString());
+        Assert.Equal("N", payload2.GetProperty("shiftCode").GetString());
+    }
+
+    [Fact]
+    public async Task RetryBuffer_WhenAnyPostFails_ShouldStopAndKeepBuffer()
+    {
+        var cloudHttp = new FakeCloudHttpClient();
+        cloudHttp.EnqueuePostResult(true);
+        cloudHttp.EnqueuePostResult(false);
+
+        var deviceService = new FakeDeviceService();
+        deviceService.SetOnline(new DeviceSession
+        {
+            DeviceId = Guid.NewGuid(),
+            DeviceName = "PLC-A",
+            MacAddress = "00-11-22-33-44-55",
+            ProcessId = Guid.NewGuid()
+        });
+
+        var bufferStore = new FakeCapacityBufferStore();
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = "2026-04-15",
+            Hour = 10,
+            MinuteBucket = 0,
+            ShiftCode = "D",
+            Total = 7,
+            OkCount = 6,
+            NgCount = 1,
+            PlcName = "PLC-A"
+        });
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = "2026-04-15",
+            Hour = 10,
+            MinuteBucket = 30,
+            ShiftCode = "D",
+            Total = 8,
+            OkCount = 8,
+            NgCount = 0,
+            PlcName = "PLC-A"
+        });
+
+        var logger = new FakeLogService();
+        var task = CreateTask(cloudHttp, deviceService, bufferStore, logger);
+
+        var result = await task.RetryBufferAsync();
+
+        Assert.False(result);
+        Assert.Equal(2, cloudHttp.PostCallCount);
+        Assert.Equal(0, bufferStore.ClearAllCallCount);
+        Assert.Contains(logger.Entries, x => x.Message.Contains("[Retry-Cloud] Capacity retry failed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RetryBuffer_WhenOnlineButDeviceMissing_ShouldReturnFalseWithoutPost()
+    {
+        var cloudHttp = new FakeCloudHttpClient();
+        var deviceService = new FakeDeviceService
+        {
+            CurrentState = NetworkState.Online,
+            HasDeviceId = true,
+            CurrentDevice = null
+        };
+
+        var bufferStore = new FakeCapacityBufferStore();
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = "2026-04-15",
+            Hour = 9,
+            MinuteBucket = 0,
+            ShiftCode = "D",
+            Total = 3,
+            OkCount = 3,
+            NgCount = 0,
+            PlcName = "PLC-A"
+        });
+
+        var task = CreateTask(cloudHttp, deviceService, bufferStore, new FakeLogService());
+
+        var result = await task.RetryBufferAsync();
+
+        Assert.False(result);
+        Assert.Equal(0, cloudHttp.PostCallCount);
+        Assert.Equal(0, bufferStore.ClearAllCallCount);
+    }
+
+    private static CapacitySyncTask CreateTask(
+        FakeCloudHttpClient cloudHttp,
+        FakeDeviceService deviceService,
+        FakeCapacityBufferStore bufferStore,
+        FakeLogService logger)
+    {
+        return new CapacitySyncTask(
+            cloudHttp,
+            new FakeCloudApiEndpointProvider(),
+            deviceService,
+            new FakeProductionContextStore(),
+            bufferStore,
+            logger,
+            new ShiftConfig
+            {
+                DayStart = "08:00",
+                DayEnd = "20:00"
+            });
+    }
+
+    private static JsonElement ParsePayload(object payload)
+    {
+        using var doc = JsonDocument.Parse(JsonSerializer.Serialize(payload));
+        return doc.RootElement.Clone();
+    }
+}

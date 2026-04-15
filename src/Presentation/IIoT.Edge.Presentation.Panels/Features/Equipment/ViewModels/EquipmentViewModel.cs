@@ -120,7 +120,7 @@ public class EquipmentViewModel : PresentationViewModelBase
                 RecipeVersion = "--";
                 ProcessName = "--";
                 IsRecipeActive = false;
-                ReplaceItems(Parameters, Array.Empty<RecipeParamViewModel>());
+                ReplaceItems<RecipeParamViewModel>(Parameters, Array.Empty<RecipeParamViewModel>());
                 return;
             }
 
@@ -128,7 +128,7 @@ public class EquipmentViewModel : PresentationViewModelBase
             RecipeVersion = snapshot.RecipeVersion;
             ProcessName = snapshot.ProcessName;
             IsRecipeActive = snapshot.IsRecipeActive;
-            ReplaceItems(Parameters, snapshot.Parameters);
+            ReplaceItems<RecipeParamViewModel>(Parameters, snapshot.Parameters);
         });
     }
 

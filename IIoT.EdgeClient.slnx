@@ -30,5 +30,8 @@
     <Project Path="src/Runtime/IIoT.Edge.Runtime.DataPipeline/IIoT.Edge.Runtime.DataPipeline.csproj" Id="d87f2998-d7cc-4f4b-a518-095f3a84f3d5" />
     <Project Path="src/Runtime/IIoT.Edge.Runtime/IIoT.Edge.Runtime.csproj" Id="0af2fc95-d944-481f-89e1-897ba043a59d" />
   </Folder>
+  <Folder Name="/src/Tests/">
+    <Project Path="src/Tests/IIoT.Edge.NonUiRegressionTests/IIoT.Edge.NonUiRegressionTests.csproj" />
+  </Folder>
 </Solution>
 
