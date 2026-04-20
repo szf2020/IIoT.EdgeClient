@@ -10,7 +10,7 @@ namespace IIoT.Edge.NonUiRegressionTests;
 public sealed class CapacitySyncTaskBehaviorTests
 {
     [Fact]
-    public async Task RetryBuffer_WhenOnlineAndAllPostsSucceed_ShouldPostAllAndClearBuffer()
+    public async Task RetryBuffer_WhenOnlineAndAllPostsSucceed_ShouldPostAllAndDeleteClaimedSummaries()
     {
         var cloudHttp = new FakeCloudHttpClient();
         cloudHttp.EnqueuePostResult(true);
@@ -22,7 +22,7 @@ public sealed class CapacitySyncTaskBehaviorTests
         {
             DeviceId = deviceId,
             DeviceName = "PLC-A",
-            MacAddress = "00-11-22-33-44-55",
+            ClientCode = "CLIENT-01",
             ProcessId = Guid.NewGuid()
         });
 
@@ -56,7 +56,9 @@ public sealed class CapacitySyncTaskBehaviorTests
 
         Assert.True(result);
         Assert.Equal(2, cloudHttp.PostCallCount);
-        Assert.Equal(1, bufferStore.ClearAllCallCount);
+        Assert.Equal(2, bufferStore.DeletedSummaries.Count);
+        Assert.Empty(bufferStore.ReleasedClaimTokens);
+        Assert.Empty(bufferStore.HourlySummaries);
 
         var payload1 = ParsePayload(cloudHttp.PostPayloads[0]);
         Assert.Equal(deviceId, payload1.GetProperty("deviceId").GetGuid());
@@ -71,7 +73,7 @@ public sealed class CapacitySyncTaskBehaviorTests
     }
 
     [Fact]
-    public async Task RetryBuffer_WhenAnyPostFails_ShouldStopAndKeepBuffer()
+    public async Task RetryBuffer_WhenAnyPostFails_ShouldReleaseClaimAndKeepRemainingSummaries()
     {
         var cloudHttp = new FakeCloudHttpClient();
         cloudHttp.EnqueuePostResult(true);
@@ -82,7 +84,7 @@ public sealed class CapacitySyncTaskBehaviorTests
         {
             DeviceId = Guid.NewGuid(),
             DeviceName = "PLC-A",
-            MacAddress = "00-11-22-33-44-55",
+            ClientCode = "CLIENT-01",
             ProcessId = Guid.NewGuid()
         });
 
@@ -117,7 +119,10 @@ public sealed class CapacitySyncTaskBehaviorTests
 
         Assert.False(result);
         Assert.Equal(2, cloudHttp.PostCallCount);
-        Assert.Equal(0, bufferStore.ClearAllCallCount);
+        Assert.Single(bufferStore.DeletedSummaries);
+        Assert.Single(bufferStore.ReleasedClaimTokens);
+        Assert.Single(bufferStore.HourlySummaries);
+        Assert.Equal(30, bufferStore.HourlySummaries[0].MinuteBucket);
         Assert.Contains(logger.Entries, x => x.Message.Contains("[Retry-Cloud] Capacity retry failed", StringComparison.Ordinal));
     }
 
@@ -151,7 +156,47 @@ public sealed class CapacitySyncTaskBehaviorTests
 
         Assert.False(result);
         Assert.Equal(0, cloudHttp.PostCallCount);
-        Assert.Equal(0, bufferStore.ClearAllCallCount);
+        Assert.Empty(bufferStore.DeletedSummaries);
+        Assert.Empty(bufferStore.ReleasedClaimTokens);
+    }
+
+    [Fact]
+    public async Task RetryBuffer_WhenHourlySummaryIsOlderThan24Hours_ShouldStillPostAndDeleteClaimedSummary()
+    {
+        var cloudHttp = new FakeCloudHttpClient();
+        cloudHttp.EnqueuePostResult(true);
+
+        var deviceService = new FakeDeviceService();
+        var deviceId = Guid.NewGuid();
+        deviceService.SetOnline(new DeviceSession
+        {
+            DeviceId = deviceId,
+            DeviceName = "PLC-A",
+            ClientCode = "CLIENT-01",
+            ProcessId = Guid.NewGuid()
+        });
+
+        var bufferStore = new FakeCapacityBufferStore();
+        bufferStore.HourlySummaries.Add(new BufferHourlySummaryDto
+        {
+            Date = DateTime.UtcNow.AddHours(-25).ToString("yyyy-MM-dd"),
+            Hour = 6,
+            MinuteBucket = 0,
+            ShiftCode = "N",
+            Total = 9,
+            OkCount = 8,
+            NgCount = 1,
+            PlcName = "PLC-A"
+        });
+
+        var task = CreateTask(cloudHttp, deviceService, bufferStore, new FakeLogService());
+
+        var result = await task.RetryBufferAsync();
+
+        Assert.True(result);
+        Assert.Equal(1, cloudHttp.PostCallCount);
+        Assert.Single(bufferStore.DeletedSummaries);
+        Assert.Empty(bufferStore.HourlySummaries);
     }
 
     private static CapacitySyncTask CreateTask(
@@ -171,7 +216,8 @@ public sealed class CapacitySyncTaskBehaviorTests
             {
                 DayStart = "08:00",
                 DayEnd = "20:00"
-            });
+            },
+            new FakeCloudDiagnosticsStore());
     }
 
     private static JsonElement ParsePayload(object payload)

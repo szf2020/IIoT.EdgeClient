@@ -39,7 +39,25 @@ public class SignalInteraction : ISignalInteraction
         (_canMergeWrite, _mergedWriteAddress, _mergedWriteCount) = TryMergeMappings(_writeMappings);
     }
 
-    private int GetBackoffDelay() => _retryCount <= 3 ? 50 : _retryCount <= 10 ? 2000 : 5000;
+    private int GetBackoffDelay()
+    {
+        if (_retryCount <= 3)
+        {
+            return 50;
+        }
+
+        if (_retryCount <= 10)
+        {
+            return 2000;
+        }
+
+        if (_retryCount <= 30)
+        {
+            return 10000;
+        }
+
+        return 30000;
+    }
 
     private bool ShouldLogDisconnect()
     {
@@ -118,7 +136,7 @@ public class SignalInteraction : ISignalInteraction
         {
             try
             {
-                await DoCoreAsync();
+                await ExecuteOneCycleAsync();
                 await Task.Delay(TaskLoopInterval, ct);
             }
             catch (Exception ex)
@@ -129,6 +147,8 @@ public class SignalInteraction : ISignalInteraction
             }
         }
     }
+
+    internal Task ExecuteOneCycleAsync() => DoCoreAsync();
 
     private async Task DoCoreAsync()
     {

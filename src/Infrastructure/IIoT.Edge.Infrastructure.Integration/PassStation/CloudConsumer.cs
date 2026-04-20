@@ -1,76 +1,92 @@
-﻿using AutoMapper;
 using IIoT.Edge.Application.Abstractions.DataPipeline.Consumers;
 using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.Application.Abstractions.Logging;
-using IIoT.Edge.Infrastructure.Integration.Config;
-using IIoT.Edge.Infrastructure.Integration.Mappings.Cloud.Injection;
+using IIoT.Edge.Application.Abstractions.Modules;
 using IIoT.Edge.SharedKernel.DataPipeline;
-using IIoT.Edge.SharedKernel.DataPipeline.CellData;
 
 namespace IIoT.Edge.Infrastructure.Integration.PassStation;
 
 public class CloudConsumer : ICloudConsumer, ICloudBatchConsumer
 {
-    private readonly ICloudHttpClient _cloudHttp;
-    private readonly ICloudApiEndpointProvider _endpointProvider;
     private readonly IDeviceService _deviceService;
-    private readonly IMapper _mapper;
     private readonly ILogService _logger;
+    private readonly ICloudUploadDiagnosticsStore _diagnosticsStore;
+    private readonly Dictionary<string, IProcessCloudUploader> _uploaders;
 
     public string? RetryChannel => "Cloud";
     public string Name => "Cloud";
     public int Order => 20;
+    public IIoT.Edge.Application.Abstractions.DataPipeline.ConsumerFailureMode FailureMode
+        => IIoT.Edge.Application.Abstractions.DataPipeline.ConsumerFailureMode.Durable;
 
-    public CloudConsumer(ICloudHttpClient cloudHttp, ICloudApiEndpointProvider endpointProvider, IDeviceService deviceService, IMapper mapper, ILogService logger)
+    public CloudConsumer(
+        IDeviceService deviceService,
+        IEnumerable<IProcessCloudUploader> uploaders,
+        ICloudUploadDiagnosticsStore diagnosticsStore,
+        ILogService logger)
     {
-        _cloudHttp = cloudHttp;
-        _endpointProvider = endpointProvider;
         _deviceService = deviceService;
-        _mapper = mapper;
+        _diagnosticsStore = diagnosticsStore;
         _logger = logger;
+        _uploaders = uploaders.ToDictionary(x => x.ProcessType, StringComparer.OrdinalIgnoreCase);
     }
 
-    public Task<bool> ProcessAsync(CellCompletedRecord record) => ProcessBatchAsync([record]);
+    public async Task<bool> ProcessAsync(CellCompletedRecord record)
+        => (await ProcessWithResultAsync(record).ConfigureAwait(false)).IsSuccess;
 
-    public async Task<bool> ProcessBatchAsync(IReadOnlyList<CellCompletedRecord> records)
+    public Task<CloudCallResult> ProcessWithResultAsync(CellCompletedRecord record)
+        => ProcessBatchAsync([record]);
+
+    public async Task<CloudCallResult> ProcessBatchAsync(IReadOnlyList<CellCompletedRecord> records)
     {
-        if (records.Count == 0) return true;
+        if (records.Count == 0)
+        {
+            return CloudCallResult.Success();
+        }
+
+        if (!_deviceService.CanUploadToCloud)
+        {
+            var blockedResult = CloudCallResult.Failure(
+                CloudCallOutcome.SkippedUploadNotReady,
+                _deviceService.CurrentUploadGate.Reason.ToReasonCode());
+            _logger.Warn(
+                $"[Cloud] Upload gate is blocked ({_deviceService.CurrentUploadGate.Reason.ToReasonCode()}). Move {records.Count} record(s) to retry queue.");
+            _diagnosticsStore.RecordResult(records[0].CellData.ProcessType, blockedResult);
+            return blockedResult;
+        }
 
         var device = _deviceService.CurrentDevice;
         if (device is null)
         {
-            _logger.Warn("[Cloud] Device is not identified yet. Skip upload.");
-            return true;
+            var unidentifiedResult = CloudCallResult.Failure(
+                CloudCallOutcome.SkippedUploadNotReady,
+                EdgeUploadBlockReason.DeviceUnidentified.ToReasonCode());
+            _logger.Warn("[Cloud] Device is not identified yet. Move record(s) to retry queue.");
+            _diagnosticsStore.RecordResult(records[0].CellData.ProcessType, unidentifiedResult);
+            return unidentifiedResult;
         }
 
-        if (_deviceService.CurrentState == NetworkState.Offline)
+        var context = new ProcessCloudUploadContext(device);
+        foreach (var group in records.GroupBy(x => x.CellData.ProcessType, StringComparer.OrdinalIgnoreCase))
         {
-            _logger.Warn($"[Cloud] Network is offline. Move {records.Count} record(s) to retry queue.");
-            return false;
-        }
-
-        var items = new List<InjectionCloudDto>(records.Count);
-        foreach (var record in records)
-        {
-            if (record.CellData is not InjectionCellData injection)
+            if (!_uploaders.TryGetValue(group.Key, out var uploader))
             {
-                _logger.Error($"[Cloud] Unsupported process type: {record.CellData.ProcessType}, Label:{record.CellData.DisplayLabel}");
-                return false;
+                var uploaderMissing = CloudCallResult.Failure(CloudCallOutcome.Exception, "uploader_not_found");
+                _logger.Error($"[Cloud] No uploader registered for process type: {group.Key}");
+                _diagnosticsStore.RecordResult(group.Key, uploaderMissing);
+                return uploaderMissing;
             }
 
-            items.Add(_mapper.Map<InjectionCloudDto>(injection));
+            var result = await uploader.UploadAsync(context, group.ToList()).ConfigureAwait(false);
+            _diagnosticsStore.RecordResult(group.Key, result);
+            if (!result.IsSuccess)
+            {
+                _logger.Error(
+                    $"[Cloud] Upload failed for process type {group.Key}. Count:{group.Count()}, Outcome:{result.Outcome}, Reason:{result.ReasonCode}");
+                return result;
+            }
         }
 
-        var payload = new
-        {
-            deviceId = device.DeviceId,
-            items
-        };
-
-        var success = await _cloudHttp.PostAsync(_endpointProvider.GetPassStationInjectionBatchPath(), payload);
-        if (success) return true;
-
-        _logger.Error($"[Cloud] Batch upload failed. Count:{records.Count}");
-        return false;
+        return CloudCallResult.Success();
     }
 }
