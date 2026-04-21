@@ -1,6 +1,8 @@
+using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.Application.Abstractions.Plc;
 using IIoT.Edge.Application.Abstractions.Plc.Factory;
 using IIoT.Edge.Application.Abstractions.Plc.Store;
+using IIoT.Edge.Infrastructure.DeviceComm.Barcode.Factories;
 using IIoT.Edge.Infrastructure.DeviceComm.Plc;
 using IIoT.Edge.Infrastructure.DeviceComm.Plc.Factory;
 using IIoT.Edge.Infrastructure.DeviceComm.Plc.Store;
@@ -15,6 +17,7 @@ public static class DependencyInjection
         services.AddSingleton<IPlcDataStore, PlcDataStore>();
         services.AddSingleton<IPlcServiceFactory, PlcServiceFactory>();
         services.AddSingleton<IPlcConnectionManager, PlcConnectionManager>();
+        services.AddSingleton<IBarcodeReaderFactory, PlcBarcodeReaderFactory>();
 
         return services;
     }
