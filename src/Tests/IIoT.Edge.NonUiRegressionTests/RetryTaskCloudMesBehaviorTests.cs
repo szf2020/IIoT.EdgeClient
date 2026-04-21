@@ -1,3 +1,4 @@
+using IIoT.Edge.Application.Abstractions.Config;
 using IIoT.Edge.Application.Abstractions.Device;
 using IIoT.Edge.Application.Abstractions.Modules;
 using IIoT.Edge.Application.Abstractions.DataPipeline;
@@ -265,6 +266,38 @@ public sealed class RetryTaskCloudMesBehaviorTests
     }
 
     [Fact]
+    public async Task MesRetry_WhenMesUploadDisabled_ShouldLeaveBacklogUntouched()
+    {
+        CellDataTypeRegistry.Register<InjectionCellData>("Injection");
+
+        var failedStore = new FakeFailedRecordStore();
+        failedStore.PendingRecords.Add(CreateFailedRecord(601, "MES", "MES", 0, "Injection", new InjectionCellData { Barcode = "MES-601" }));
+        var diagnosticsStore = new FakeMesRetryDiagnosticsStore();
+
+        var task = new TestableMesRetryTask(
+            new FakeLogService(),
+            failedStore,
+            new FakeMesFallbackBufferStore(),
+            new FakeMesConsumer(),
+            diagnosticsStore,
+            runtimeConfig: new FakeLocalSystemRuntimeConfigService
+            {
+                Current = SystemRuntimeConfigSnapshot.Default with
+                {
+                    MesUploadEnabled = false
+                }
+            });
+
+        await task.ExecuteOnceAsync();
+
+        Assert.Single(failedStore.PendingRecords);
+        Assert.Empty(failedStore.DeletedIds);
+        Assert.Empty(failedStore.Updates);
+        Assert.Empty(failedStore.ReleasedClaimTokens);
+        Assert.Equal(MesRetryRuntimeState.Idle, diagnosticsStore.Snapshot.RuntimeState);
+    }
+
+    [Fact]
     public async Task MesRetry_WhenFailureOccurs_ShouldIncreaseRetryCountAndBackoff()
     {
         CellDataTypeRegistry.Register<InjectionCellData>("Injection");
@@ -340,8 +373,8 @@ public sealed class RetryTaskCloudMesBehaviorTests
         await task.ExecuteOnceAsync();
 
         Assert.Contains(100L, mesFallbackStore.DeletedIds);
-        Assert.Equal(1, failedStore.SaveCallCount);
         Assert.Equal(1, mesConsumer.ProcessCallCount);
+        Assert.Empty(failedStore.PendingRecords);
     }
 
     [Fact]
@@ -559,19 +592,18 @@ public sealed class RetryTaskCloudMesBehaviorTests
     }
 
     [Fact]
-    public async Task CloudChannel_WhenFallbackSaveFails_ShouldContinueRecoveringRemainingRecords()
+    public async Task CloudChannel_WhenFallbackContainsMixedValidity_ShouldContinueRecoveringRemainingRecords()
     {
         CellDataTypeRegistry.Register<InjectionCellData>("Injection");
 
         var logger = new FakeLogService();
         var failedStore = new FakeFailedRecordStore();
-        failedStore.SaveExceptions.Enqueue(new InvalidOperationException("transient save failure"));
         var cloudFallbackStore = new FakeCloudFallbackBufferStore();
         cloudFallbackStore.Records.Add(new CloudFallbackRecord
         {
             Id = 201,
             ProcessType = "Injection",
-            CellDataJson = SerializeCellData(new InjectionCellData { Barcode = "BC-CLOUD-201", WorkOrderNo = "WO-201" }),
+            CellDataJson = "{bad-json",
             FailedTarget = "Cloud",
             ErrorMessage = "seed-1",
             CreatedAt = DateTime.UtcNow.AddMinutes(-2)
@@ -588,6 +620,7 @@ public sealed class RetryTaskCloudMesBehaviorTests
 
         var cloudConsumer = new FakeCloudConsumer();
         var cloudBatchConsumer = new FakeCloudBatchConsumer();
+        var deadLetterStore = new FakeCloudDeadLetterStore();
         var integrationRegistry = new FakeProcessIntegrationRegistry();
         integrationRegistry.RegisterCloudUploader("Injection", ProcessUploadMode.Batch);
         var task = new TestableCloudRetryTask(
@@ -599,16 +632,17 @@ public sealed class RetryTaskCloudMesBehaviorTests
             cloudBatchConsumer,
             new FakeDeviceLogSyncTask(),
             new FakeCapacitySyncTask(),
-            processIntegrationRegistry: integrationRegistry);
+            processIntegrationRegistry: integrationRegistry,
+            deadLetterStore: deadLetterStore);
 
         await task.ExecuteOnceAsync();
 
-        Assert.Equal(2, failedStore.SaveCallCount);
+        Assert.Contains(201L, cloudFallbackStore.DeletedIds);
         Assert.Contains(202L, cloudFallbackStore.DeletedIds);
-        Assert.DoesNotContain(201L, cloudFallbackStore.DeletedIds);
+        Assert.Single(deadLetterStore.Records);
         Assert.Equal(0, cloudConsumer.ProcessCallCount);
         Assert.Equal(1, cloudBatchConsumer.ProcessBatchCallCount);
-        Assert.Contains(logger.Entries, entry => entry.Message.Contains("Failed to rehydrate Cloud fallback record 201", StringComparison.Ordinal));
+        Assert.Contains(logger.Entries, entry => entry.Message.Contains("moved into Cloud dead-letter store", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -647,17 +681,117 @@ public sealed class RetryTaskCloudMesBehaviorTests
     }
 
     [Fact]
-    public async Task MesRetry_WhenDeadLetterSaveFails_ShouldKeepSourceRecord()
+    public async Task CloudRetry_WhenDeadLetterSaveFails_ShouldBackoffRecordAndReleaseClaim()
     {
         var failedStore = new FakeFailedRecordStore();
         failedStore.PendingRecords.Add(new FailedCellRecord
         {
             Id = 302,
+            Channel = "Cloud",
+            ProcessType = "Injection",
+            CellDataJson = "{bad-json",
+            FailedTarget = "Cloud",
+            ErrorMessage = "seed",
+            RetryCount = 2,
+            NextRetryTime = DateTime.UtcNow.AddMinutes(-1),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+        });
+
+        var deadLetterStore = new FakeCloudDeadLetterStore
+        {
+            SaveException = new InvalidOperationException("dead-letter down")
+        };
+        var criticalWriter = new FakeCriticalPersistenceFallbackWriter();
+        var task = new TestableCloudRetryTask(
+            new FakeLogService(),
+            failedStore,
+            new FakeCloudFallbackBufferStore(),
+            CreateOnlineDeviceService(),
+            new FakeCloudConsumer(),
+            new FakeCloudBatchConsumer(),
+            new FakeDeviceLogSyncTask(),
+            new FakeCapacitySyncTask(),
+            deadLetterStore: deadLetterStore,
+            criticalWriter: criticalWriter);
+
+        var before = DateTime.UtcNow;
+        await task.ExecuteOnceAsync();
+
+        Assert.DoesNotContain(302L, failedStore.DeletedIds);
+        Assert.True(failedStore.Updates.TryGetValue(302, out var update));
+        Assert.Equal(3, update!.RetryCount);
+        Assert.Contains("dead-letter persistence also failed", update.ErrorMessage, StringComparison.Ordinal);
+        Assert.InRange((update.NextRetryTime - before).TotalSeconds, 20, 40);
+        Assert.Single(criticalWriter.Writes);
+
+        var reclaimedBatch = await failedStore.ClaimPendingBatchAsync("Cloud", 10);
+        Assert.NotNull(reclaimedBatch);
+        Assert.Contains(reclaimedBatch!.Records, record => record.Id == 302);
+    }
+
+    [Fact]
+    public async Task CloudBatchRetry_WhenDeadLetterSaveFails_ShouldBackoffRecordAndReleaseClaim()
+    {
+        var failedStore = new FakeFailedRecordStore();
+        failedStore.PendingRecords.Add(new FailedCellRecord
+        {
+            Id = 303,
+            Channel = "Cloud",
+            ProcessType = "Injection",
+            CellDataJson = "{bad-json",
+            FailedTarget = "Cloud",
+            ErrorMessage = "seed",
+            RetryCount = 0,
+            NextRetryTime = DateTime.UtcNow.AddMinutes(-1),
+            CreatedAt = DateTime.UtcNow.AddMinutes(-2)
+        });
+
+        var deadLetterStore = new FakeCloudDeadLetterStore
+        {
+            SaveException = new InvalidOperationException("dead-letter down")
+        };
+        var criticalWriter = new FakeCriticalPersistenceFallbackWriter();
+        var integrationRegistry = new FakeProcessIntegrationRegistry();
+        integrationRegistry.RegisterCloudUploader("Injection", ProcessUploadMode.Batch);
+        var task = new TestableCloudRetryTask(
+            new FakeLogService(),
+            failedStore,
+            new FakeCloudFallbackBufferStore(),
+            CreateOnlineDeviceService(),
+            new FakeCloudConsumer(),
+            new FakeCloudBatchConsumer(),
+            new FakeDeviceLogSyncTask(),
+            new FakeCapacitySyncTask(),
+            processIntegrationRegistry: integrationRegistry,
+            deadLetterStore: deadLetterStore,
+            criticalWriter: criticalWriter);
+
+        await task.ExecuteOnceAsync();
+
+        Assert.DoesNotContain(303L, failedStore.DeletedIds);
+        Assert.True(failedStore.Updates.TryGetValue(303, out var update));
+        Assert.Equal(1, update!.RetryCount);
+        Assert.Contains("dead-letter persistence also failed", update.ErrorMessage, StringComparison.Ordinal);
+        Assert.Single(criticalWriter.Writes);
+
+        var reclaimedBatch = await failedStore.ClaimPendingBatchAsync("Cloud", 10);
+        Assert.NotNull(reclaimedBatch);
+        Assert.Contains(reclaimedBatch!.Records, record => record.Id == 303);
+    }
+
+    [Fact]
+    public async Task MesRetry_WhenDeadLetterSaveFails_ShouldBackoffRecordAndReleaseClaim()
+    {
+        var failedStore = new FakeFailedRecordStore();
+        failedStore.PendingRecords.Add(new FailedCellRecord
+        {
+            Id = 304,
             Channel = "MES",
             ProcessType = "Injection",
             CellDataJson = "{bad-json",
             FailedTarget = "MES",
             ErrorMessage = "seed",
+            RetryCount = 1,
             NextRetryTime = DateTime.UtcNow.AddMinutes(-1),
             CreatedAt = DateTime.UtcNow.AddMinutes(-2)
         });
@@ -675,10 +809,19 @@ public sealed class RetryTaskCloudMesBehaviorTests
             deadLetterStore: deadLetterStore,
             criticalWriter: criticalWriter);
 
+        var before = DateTime.UtcNow;
         await task.ExecuteOnceAsync();
 
-        Assert.DoesNotContain(302L, failedStore.DeletedIds);
+        Assert.DoesNotContain(304L, failedStore.DeletedIds);
+        Assert.True(failedStore.Updates.TryGetValue(304, out var update));
+        Assert.Equal(2, update!.RetryCount);
+        Assert.Contains("dead-letter persistence also failed", update.ErrorMessage, StringComparison.Ordinal);
+        Assert.InRange((update.NextRetryTime - before).TotalSeconds, 20, 40);
         Assert.Single(criticalWriter.Writes);
+
+        var reclaimedBatch = await failedStore.ClaimPendingBatchAsync("MES", 10);
+        Assert.NotNull(reclaimedBatch);
+        Assert.Contains(reclaimedBatch!.Records, record => record.Id == 304);
     }
 
     private static FakeDeviceService CreateOnlineDeviceService()
@@ -767,6 +910,7 @@ public sealed class RetryTaskCloudMesBehaviorTests
             FakeCriticalPersistenceFallbackWriter? criticalWriter = null,
             DataPipelineCapacityGuard? capacityGuard = null)
         {
+            fallbackStore.RetryStore = retryStore;
             _inner = new CloudRetryTask(
                 logger,
                 retryStore,
@@ -799,8 +943,10 @@ public sealed class RetryTaskCloudMesBehaviorTests
             FakeMesRetryDiagnosticsStore? diagnosticsStore = null,
             FakeMesDeadLetterStore? deadLetterStore = null,
             FakeCriticalPersistenceFallbackWriter? criticalWriter = null,
+            FakeLocalSystemRuntimeConfigService? runtimeConfig = null,
             DataPipelineCapacityGuard? capacityGuard = null)
         {
+            fallbackStore.RetryStore = retryStore;
             _inner = new MesRetryTask(
                 logger,
                 retryStore,
@@ -808,6 +954,7 @@ public sealed class RetryTaskCloudMesBehaviorTests
                 deadLetterStore ?? new FakeMesDeadLetterStore(),
                 criticalWriter ?? new FakeCriticalPersistenceFallbackWriter(),
                 mesConsumer,
+                runtimeConfig ?? new FakeLocalSystemRuntimeConfigService(),
                 diagnosticsStore ?? new FakeMesRetryDiagnosticsStore(),
                 capacityGuard);
         }

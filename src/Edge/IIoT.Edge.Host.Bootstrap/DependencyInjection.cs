@@ -1,4 +1,5 @@
 using IIoT.Edge.Application;
+using IIoT.Edge.Application.Abstractions.Config;
 using IIoT.Edge.Application.Abstractions.Context;
 using IIoT.Edge.Application.Abstractions.DataPipeline;
 using IIoT.Edge.Application.Abstractions.DataPipeline.Stores;
@@ -11,6 +12,7 @@ using IIoT.Edge.Application.Common.Tasks;
 using IIoT.Edge.Module.Abstractions;
 using IIoT.Edge.Infrastructure.DeviceComm;
 using IIoT.Edge.Infrastructure.Integration;
+using IIoT.Edge.Infrastructure.Integration.Recipe;
 using IIoT.Edge.Infrastructure.Persistence.Dapper;
 using IIoT.Edge.Infrastructure.Persistence.EfCore;
 using IIoT.Edge.Presentation.Navigation;
@@ -126,6 +128,12 @@ public static class DependencyInjection
 
         services.AddSingleton<IManagedBackgroundService>(sp =>
             new DelegatingBackgroundService(
+                "Config.RuntimeWarmup",
+                ct => sp.GetRequiredService<ILocalSystemRuntimeConfigService>().EnsureInitializedAsync(ct),
+                _ => Task.CompletedTask));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new DelegatingBackgroundService(
                 "Device.Heartbeat",
                 ct => sp.GetRequiredService<IDeviceService>().StartAsync(ct),
                 _ => sp.GetRequiredService<IDeviceService>().StopAsync()));
@@ -156,6 +164,10 @@ public static class DependencyInjection
                 "Cloud.DeviceLogSync",
                 ct => sp.GetRequiredService<IDeviceLogSyncTask>().StartAsync(ct),
                 _ => sp.GetRequiredService<IDeviceLogSyncTask>().StopAsync()));
+
+        services.AddSingleton<IManagedBackgroundService>(sp =>
+            new LongRunningBackgroundTaskService(
+                sp.GetRequiredService<RecipeSyncTask>()));
 
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IAppLifecycleCoordinator, AppLifecycleManager>();
